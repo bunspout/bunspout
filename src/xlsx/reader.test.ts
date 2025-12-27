@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { existsSync } from 'fs';
-import { describe, test, expect } from 'bun:test';
+import { describe, test, expect, afterEach } from 'bun:test';
 import { cell } from '@sheet/cell';
 import { row } from '@sheet/row';
 import { readXlsx } from './reader';
@@ -8,6 +7,12 @@ import { writeXlsx } from './writer';
 
 describe('XLSXReader', () => {
   const testFile = 'test-read.xlsx';
+
+  afterEach(async () => {
+    if (await Bun.file(testFile).exists()) {
+      await import('fs').then((fs) => fs.promises.unlink(testFile));
+    }
+  });
 
   test('should read single sheet workbook', async () => {
     // Write a test file first
@@ -37,11 +42,6 @@ describe('XLSXReader', () => {
     expect(rows).toHaveLength(2);
     expect(rows[0]?.cells[0]?.value).toBe('Name');
     expect(rows[1]?.cells[0]?.value).toBe('Alice');
-
-    // Clean up
-    if (existsSync(testFile)) {
-      await import('fs').then((fs) => fs.promises.unlink(testFile));
-    }
   });
 
   test('should read multiple sheets workbook', async () => {
@@ -60,11 +60,6 @@ describe('XLSXReader', () => {
 
     const sheet2 = workbook.sheet(1);
     expect(sheet2.name).toBe('Sheet2');
-
-    // Clean up
-    if (existsSync(testFile)) {
-      await import('fs').then((fs) => fs.promises.unlink(testFile));
-    }
   });
 
   test('should get sheet by name', async () => {
@@ -77,11 +72,6 @@ describe('XLSXReader', () => {
     const workbook = await readXlsx(testFile);
     const sheet = workbook.sheet('MySheet');
     expect(sheet.name).toBe('MySheet');
-
-    // Clean up
-    if (existsSync(testFile)) {
-      await import('fs').then((fs) => fs.promises.unlink(testFile));
-    }
   });
 
   test('should get sheet by index', async () => {
@@ -98,11 +88,6 @@ describe('XLSXReader', () => {
 
     const sheet1 = workbook.sheet(1);
     expect(sheet1.name).toBe('Second');
-
-    // Clean up
-    if (existsSync(testFile)) {
-      await import('fs').then((fs) => fs.promises.unlink(testFile));
-    }
   });
 
   test('should iterate all sheets', async () => {
@@ -120,11 +105,6 @@ describe('XLSXReader', () => {
     expect(sheets[0]?.name).toBe('A');
     expect(sheets[1]?.name).toBe('B');
     expect(sheets[2]?.name).toBe('C');
-
-    // Clean up
-    if (existsSync(testFile)) {
-      await import('fs').then((fs) => fs.promises.unlink(testFile));
-    }
   });
 
   test('should handle error for invalid files', async () => {
@@ -138,11 +118,6 @@ describe('XLSXReader', () => {
 
     const workbook = await readXlsx(testFile);
     expect(() => workbook.sheet('NonExistent')).toThrow();
-
-    // Clean up
-    if (existsSync(testFile)) {
-      await import('fs').then((fs) => fs.promises.unlink(testFile));
-    }
   });
 
   test('should read multiple sheets and verify isolation', async () => {
@@ -216,11 +191,6 @@ describe('XLSXReader', () => {
     expect(sheet3Rows[0]?.cells[0]?.value).toBe('Sheet3-Only');
     // Verify no Sheet1 or Sheet2 data
     expect(sheet3Rows.every((r) => r.cells[0]?.value?.toString().startsWith('Sheet3'))).toBe(true);
-
-    // Clean up
-    if (existsSync(testFile)) {
-      await import('fs').then((fs) => fs.promises.unlink(testFile));
-    }
   });
 
   test('should read workbook with shared strings', async () => {
@@ -255,11 +225,6 @@ describe('XLSXReader', () => {
     expect(rows[0]?.cells[1]?.value).toBe('World');
     expect(rows[1]?.cells[0]?.value).toBe('Hello'); // Should resolve from shared strings
     expect(rows[1]?.cells[1]?.value).toBe('Test');
-
-    // Clean up
-    if (existsSync(testFile)) {
-      await import('fs').then((fs) => fs.promises.unlink(testFile));
-    }
   });
 });
 

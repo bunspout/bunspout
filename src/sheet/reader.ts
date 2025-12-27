@@ -1,6 +1,6 @@
 import type { ReadOptions } from '@xlsx/types';
 import { convertExcelTimestamp } from '@utils/dates';
-import type { Row, Cell, XmlEvent } from '../types';
+import type { Cell, Row, XmlEvent } from '../types';
 
 /**
  * Parses a sheet from XML events, yielding rows
@@ -49,7 +49,7 @@ export async function* parseSheet(
         inRow = false;
         yield currentRow as Row;
         currentRow = null;
-      } else if (event.name === 'c' && inCell && currentCell && currentRow) {
+      } else if (event.name === 'c' && inCell && currentCell && currentRow && currentRow.cells) {
         inCell = false;
         // Add cell even if value is undefined (empty cell) - set to empty string
         if (currentCell.value === undefined) {
@@ -72,7 +72,11 @@ export async function* parseSheet(
           currentCell.value = currentCell.value === 1;
         }
 
-        currentRow.cells!.push(currentCell as Cell);
+        const cell: Cell = {
+          value: currentCell.value ?? '',
+          ...(currentCell.type !== undefined && { type: currentCell.type }),
+        };
+        currentRow.cells.push(cell);
         currentCell = null;
         inInlineStr = false;
         inInlineStrText = false;
@@ -118,8 +122,7 @@ export async function* parseSheet(
         }
       } else if (inInlineStrText && currentCell) {
         // Inline string text element (<t> inside <is>)
-        const text = event.text || '';
-        currentCell.value = text;
+        currentCell.value = event.text || '';
         currentCell.type = 'string';
       }
     }

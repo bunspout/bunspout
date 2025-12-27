@@ -1,17 +1,15 @@
 import { describe, test, expect, afterEach } from 'bun:test';
-import { writeXlsx } from './writer';
-import { readXlsx } from './reader';
 import { cell } from '@sheet/cell';
 import { row } from '@sheet/row';
-import { existsSync } from 'fs';
-import { openZip, readZipEntry } from '@zip/reader';
+import { readZipEntry } from '@zip/reader';
+import { writeXlsx } from './writer';
 import { bytesToString } from '../adapters/common';
 
 describe('Column Widths', () => {
   const testFile = 'test-column-widths.xlsx';
 
   afterEach(async () => {
-    if (existsSync(testFile)) {
+    if (await Bun.file(testFile).exists()) {
       await import('fs').then((fs) => fs.promises.unlink(testFile));
     }
   });
@@ -275,7 +273,7 @@ describe('Column Widths', () => {
       expect(xml).toMatch(/<col min="2" max="2" width="[\d.]+" customWidth="1"\/>/);
       // Should have auto-detected width for column 3 (C) - should be larger than column 2
       expect(xml).toMatch(/<col min="3" max="3" width="[\d.]+" customWidth="1"\/>/);
-      
+
       // Extract widths to verify column 3 is wider than column 2
       const col2Match = xml.match(/<col min="2" max="2" width="([\d.]+)"/);
       const col3Match = xml.match(/<col min="3" max="3" width="([\d.]+)"/);

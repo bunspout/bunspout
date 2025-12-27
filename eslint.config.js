@@ -34,6 +34,7 @@ export default tseslint.config(
       '@stylistic/indent': ['error', 2],
       '@stylistic/no-trailing-spaces': 'error',
       '@stylistic/eol-last': ['error', 'always'],
+      '@stylistic/object-curly-spacing': ['error', 'always'],
 
       // Prefer path aliases over relative imports
       'no-restricted-imports': [

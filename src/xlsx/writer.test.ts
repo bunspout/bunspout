@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { existsSync } from 'fs';
 import { describe, test, expect, afterEach } from 'bun:test';
 import { cell } from '@sheet/cell';
 import { row } from '@sheet/row';
@@ -11,7 +10,7 @@ describe('XLSXWriter', () => {
 
   afterEach(async () => {
     // Clean up test file after each test
-    if (existsSync(testFile)) {
+    if (await Bun.file(testFile).exists()) {
       await import('fs').then((fs) => fs.promises.unlink(testFile));
     }
   });
@@ -29,7 +28,7 @@ describe('XLSXWriter', () => {
       ],
     });
 
-    expect(existsSync(testFile)).toBe(true);
+    expect(await Bun.file(testFile).exists()).toBe(true);
   });
 
   test('should write multiple sheets workbook', async () => {
@@ -50,7 +49,7 @@ describe('XLSXWriter', () => {
       ],
     });
 
-    expect(existsSync(testFile)).toBe(true);
+    expect(await Bun.file(testFile).exists()).toBe(true);
 
     // Verify we can read it back
     const workbook = await readXlsx(testFile);
@@ -89,7 +88,7 @@ describe('XLSXWriter', () => {
       ],
     });
 
-    expect(existsSync(testFile)).toBe(true);
+    expect(await Bun.file(testFile).exists()).toBe(true);
 
     // Verify sheet exists and can be read
     const workbook = await readXlsx(testFile);
@@ -131,7 +130,7 @@ describe('XLSXWriter', () => {
       ],
     });
 
-    expect(existsSync(testFile)).toBe(true);
+    expect(await Bun.file(testFile).exists()).toBe(true);
 
     // Verify we can read it back
     const workbook = await readXlsx(testFile);
@@ -161,7 +160,7 @@ describe('XLSXWriter', () => {
       { sharedStrings: 'inline' },
     );
 
-    expect(existsSync(testFile)).toBe(true);
+    expect(await Bun.file(testFile).exists()).toBe(true);
 
   });
 
@@ -266,7 +265,7 @@ describe('XLSXWriter', () => {
       ],
     });
 
-    expect(existsSync(testFile)).toBe(true);
+    expect(await Bun.file(testFile).exists()).toBe(true);
 
     // Read back and verify empty cells are preserved
     const workbook = await readXlsx(testFile);
@@ -306,7 +305,7 @@ describe('XLSXWriter', () => {
         ],
       });
 
-      expect(existsSync(testFile)).toBe(true);
+      expect(await Bun.file(testFile).exists()).toBe(true);
 
       // Read back and verify the sheet XML is valid
       const workbook = await readXlsx(testFile);
@@ -335,8 +334,8 @@ describe('XLSXWriter', () => {
       });
 
       // Verify file exists and is not empty
-      expect(existsSync(testFile)).toBe(true);
       const file = Bun.file(testFile);
+      expect(await file.exists()).toBe(true);
       const size = (await file.arrayBuffer()).byteLength;
       expect(size).toBeGreaterThan(0);
 
@@ -519,11 +518,11 @@ describe('XLSXWriter', () => {
         { sharedStrings: 'shared' },
       );
 
-      expect(existsSync(testFile)).toBe(true);
+      const file = Bun.file(testFile);
+      expect(await file.exists()).toBe(true);
 
       // Verify shared strings file exists in ZIP
       const { openZip } = await import('../zip/reader');
-      const file = Bun.file(testFile);
       const buffer = Buffer.from(await file.arrayBuffer());
       const zipFile = await openZip(buffer);
       const fileNames = zipFile.entries.map((e) => e.fileName);

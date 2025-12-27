@@ -1,17 +1,14 @@
-import { existsSync } from 'fs';
-import { describe, test, expect } from 'bun:test';
-import { afterEach } from 'bun:test';
+import { describe, test, expect, afterEach } from 'bun:test';
 import { cell } from '@sheet/cell';
 import { row } from '@sheet/row';
 import { generateCoreProperties, generateCustomProperties } from './structure';
 import { writeXlsx } from './writer';
 
-
 describe('Document Properties', () => {
   const testFile = 'test-properties.xlsx';
 
   afterEach(async () => {
-    if (existsSync(testFile)) {
+    if (await Bun.file(testFile).exists()) {
       await import('fs').then((fs) => fs.promises.unlink(testFile));
     }
   });
@@ -144,11 +141,11 @@ describe('Document Properties', () => {
         },
       });
 
-      expect(existsSync(testFile)).toBe(true);
+      const file = Bun.file(testFile);
+      expect(await file.exists()).toBe(true);
 
       // Verify core.xml exists in ZIP
       const { openZip } = await import('../zip/reader');
-      const file = Bun.file(testFile);
       const buffer = Buffer.from(await file.arrayBuffer());
       const zipFile = await openZip(buffer);
       const fileNames = zipFile.entries.map((e) => e.fileName);

@@ -1,19 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { existsSync } from 'fs';
-import { describe, test, expect } from 'bun:test';
-import { afterEach } from 'bun:test';
+import { describe, test, expect, afterEach } from 'bun:test';
 import { cell } from '@sheet/cell';
 import { row } from '@sheet/row';
 import { readXlsx } from './reader';
 import { generateWorkbook } from './structure';
 import { writeXlsx } from './writer';
 
-
 describe('Sheet Visibility', () => {
   const testFile = 'test-visibility.xlsx';
 
   afterEach(async () => {
-    if (existsSync(testFile)) {
+    if (await Bun.file(testFile).exists()) {
       await import('fs').then((fs) => fs.promises.unlink(testFile));
     }
   });
@@ -83,12 +80,12 @@ describe('Sheet Visibility', () => {
         ],
       });
 
-      expect(existsSync(testFile)).toBe(true);
+      const file = Bun.file(testFile);
+      expect(await file.exists()).toBe(true);
 
       // Verify workbook.xml contains hidden state
       const { openZip, readZipEntry } = await import('../zip/reader');
       const { bytesToString } = await import('../adapters/common');
-      const file = Bun.file(testFile);
       const buffer = Buffer.from(await file.arrayBuffer());
       const zipFile = await openZip(buffer);
       const workbookEntry = zipFile.entries.find((e) => e.fileName === 'xl/workbook.xml');

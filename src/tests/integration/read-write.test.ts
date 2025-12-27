@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { existsSync } from 'fs';
-import { describe, test, expect } from 'bun:test';
+import { describe, test, expect, afterEach } from 'bun:test';
 import { readXlsx } from '@xlsx/reader';
 import { writeXlsx } from '@xlsx/writer';
 import { cell } from '@sheet/cell';
@@ -8,6 +7,16 @@ import { row } from '@sheet/row';
 
 describe('Integration Tests', () => {
   const testFile = 'integration-test.xlsx';
+
+  afterEach(async () => {
+    if (await Bun.file(testFile).exists()) {
+      await import('fs').then((fs) => fs.promises.unlink(testFile));
+    }
+    // Also clean up date-test.xlsx if it exists
+    if (await Bun.file('date-test.xlsx').exists()) {
+      await import('fs').then((fs) => fs.promises.unlink('date-test.xlsx'));
+    }
+  });
 
   test('should write rows → ZIP → read back → verify rows match', async () => {
     const originalRows = [
@@ -50,11 +59,6 @@ describe('Integration Tests', () => {
         );
       }
     }
-
-    // Clean up
-    if (existsSync(testFile)) {
-      await import('fs').then((fs) => fs.promises.unlink(testFile));
-    }
   });
 
   test('should handle various row/cell configurations', async () => {
@@ -91,11 +95,6 @@ describe('Integration Tests', () => {
     expect(readRows[2]?.cells[0]?.value).toBe(42);
     expect(readRows[3]?.cells).toHaveLength(3);
     expect(readRows[3]?.rowIndex).toBe(4);
-
-    // Clean up
-    if (existsSync(testFile)) {
-      await import('fs').then((fs) => fs.promises.unlink(testFile));
-    }
   });
 
   test('should parse date cells when use1904Dates is enabled', async () => {
@@ -132,11 +131,6 @@ describe('Integration Tests', () => {
     expect((dateCell?.value as Date)?.getFullYear()).toBe(2024);
     expect((dateCell?.value as Date)?.getMonth()).toBe(0); // January
     expect((dateCell?.value as Date)?.getDate()).toBe(15);
-
-    // Clean up
-    if (existsSync(testFile)) {
-      await import('fs').then((fs) => fs.promises.unlink(testFile));
-    }
   });
 
   test('should handle streaming behavior with large dataset', async () => {
@@ -178,10 +172,5 @@ describe('Integration Tests', () => {
     expect(readRows).toHaveLength(100);
     expect(readRows[0]?.cells[0]?.value).toBe('Row0');
     expect(readRows[99]?.cells[0]?.value).toBe('Row99');
-
-    // Clean up
-    if (existsSync(testFile)) {
-      await import('fs').then((fs) => fs.promises.unlink(testFile));
-    }
   });
 });

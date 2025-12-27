@@ -2,8 +2,8 @@
  * Column width utilities for Excel
  */
 import type { ColumnWidthDefinition } from '@xlsx/types';
+import { resolveCell } from '@xml/cell-resolver';
 import type { Cell } from '../types';
-import { resolveCell } from '../xml/cell-resolver';
 
 /**
  * Roughly estimates Excel column width from cell content
