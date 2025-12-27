@@ -1,0 +1,4 @@
+# Bun configuration
+# Path aliases are configured in tsconfig.json and automatically used by Bun
+# Bun will read the paths from tsconfig.json at runtime
+
