@@ -1,10 +1,10 @@
-import type * as yauzl from 'yauzl';
 import { parseSheet } from '@sheet/reader';
 import type { ZipFile, ZipEntry } from '@zip/reader';
 import { readZipEntry } from '@zip/reader';
 import { parseXmlEvents } from '@xml/parser';
 import type { Row } from '../types';
 import { parseSharedStrings } from './shared-strings-reader';
+import type { ReadOptions } from './types';
 
 export type SheetInfo = {
   name: string;
@@ -12,14 +12,16 @@ export type SheetInfo = {
 };
 
 export class Workbook {
-  private zipFile: ZipFile;
+  private zip: ZipFile;
   private _sheets: Sheet[];
   private sharedStrings: string[] | null = null;
+  private options?: ReadOptions;
 
-  constructor(zipFile: ZipFile, sheetInfos: SheetInfo[]) {
-    this.zipFile = zipFile;
+  constructor(zip: ZipFile, sheetInfos: SheetInfo[], options?: ReadOptions) {
+    this.zip = zip;
+    this.options = options;
     this._sheets = sheetInfos.map(
-      (info) => new Sheet(info.entry, zipFile.zipFile, info.name, this),
+      (info) => new Sheet(info.name, info.entry, this),
     );
   }
 
@@ -31,14 +33,14 @@ export class Workbook {
       return; // Already loaded
     }
 
-    const sharedStringsEntry = this.zipFile.entries.find(
+    const sharedStringsEntry = this.zip.entries.find(
       (e) => e.fileName === 'xl/sharedStrings.xml',
     );
 
     if (sharedStringsEntry) {
       this.sharedStrings = await parseSharedStrings(
         sharedStringsEntry,
-        this.zipFile.zipFile,
+        this.zip.zipFile,
       );
     } else {
       this.sharedStrings = [];
@@ -75,6 +77,21 @@ export class Workbook {
   }
 
   /**
+   * Reads rows from a sheet entry
+   */
+  async *readSheetRows(entry: ZipEntry): AsyncIterable<Row> {
+    // Ensure shared strings are loaded
+    await this.loadSharedStrings();
+
+    // Stream XML directly from ZIP to parser (no accumulation)
+    yield* parseSheet(
+      parseXmlEvents(readZipEntry(entry, this.zip.zipFile)),
+      (index: number) => this.getSharedString(index),
+      this.options,
+    );
+  }
+
+  /**
    * Returns all sheets
    */
   sheets(): Sheet[] {
@@ -83,30 +100,17 @@ export class Workbook {
 }
 
 export class Sheet {
-  private zipEntry: ZipEntry;
-  private zipFile: yauzl.ZipFile;
-  public readonly name: string;
-  private workbook: Workbook;
-
-  constructor(zipEntry: ZipEntry, zipFile: yauzl.ZipFile, name: string, workbook: Workbook) {
-    this.zipEntry = zipEntry;
-    this.zipFile = zipFile;
-    this.name = name;
-    this.workbook = workbook;
-  }
+  constructor(
+    public readonly name: string,
+    public readonly entry: ZipEntry,
+    private workbook: Workbook,
+  ) {}
 
   /**
    * Returns rows as async iterable (always array-based format)
    */
   async *rows(): AsyncIterable<Row> {
-    // Ensure shared strings are loaded
-    await this.workbook.loadSharedStrings();
-
-    // Stream XML directly from ZIP to parser (no accumulation)
-    yield* parseSheet(
-      parseXmlEvents(readZipEntry(this.zipEntry, this.zipFile)),
-      (index: number) => this.workbook.getSharedString(index),
-    );
+    yield* this.workbook.readSheetRows(this.entry);
   }
 }
 
