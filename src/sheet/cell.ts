@@ -1,14 +1,16 @@
-import type { Cell } from './types';
+import type { Cell } from 'types';
 
 /**
  * Converts a Date to Excel serial number
- * Excel serial date: days since January 1, 1900
+ * Excel serial date: days since December 31, 1899 (day 0)
+ * Day 1 = January 1, 1900
  */
 function dateToExcelSerial(date: Date): number {
-  const epoch = new Date(1899, 11, 30); // December 30, 1899 (Excel epoch)
+  const epoch = new Date(1899, 11, 31); // December 31, 1899 (Excel day 0)
   const diff = date.getTime() - epoch.getTime();
   const days = diff / (1000 * 60 * 60 * 24);
-  // Excel incorrectly treats 1900 as a leap year, so we add 1 day for dates after Feb 28, 1900
+  // Excel incorrectly treats 1900 as a leap year (Feb 29, 1900 exists in Excel)
+  // For dates on or after March 1, 1900, add 1 to account for the phantom Feb 29
   if (date >= new Date(1900, 2, 1)) {
     return days + 1;
   }

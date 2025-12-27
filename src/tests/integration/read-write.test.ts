@@ -98,6 +98,47 @@ describe('Integration Tests', () => {
     }
   });
 
+  test('should parse date cells when use1904Dates is enabled', async () => {
+    const testFile = 'date-test.xlsx';
+
+    // Write a file with date cells (this will be written as numbers with date type)
+    await writeXlsx(testFile, {
+      sheets: [
+        {
+          name: 'Dates',
+          rows: (async function* () {
+            yield row([cell('Date'), cell('Value')]);
+            yield row([cell(new Date('2024-01-15')), cell(42)]);
+          })(),
+        },
+      ],
+    });
+
+    // Read back with date parsing enabled
+    const workbook = await readXlsx(testFile, { use1904Dates: false });
+    const sheet = workbook.sheet('Dates');
+
+    const readRows: any[] = [];
+    for await (const row of sheet.rows()) {
+      readRows.push(row);
+    }
+
+    expect(readRows).toHaveLength(2);
+
+    // Check that the date cell has the parsed Date directly in value
+    const dateCell = readRows[1]?.cells[0];
+    expect(dateCell?.type).toBe('date');
+    expect(dateCell?.value).toBeInstanceOf(Date);
+    expect((dateCell?.value as Date)?.getFullYear()).toBe(2024);
+    expect((dateCell?.value as Date)?.getMonth()).toBe(0); // January
+    expect((dateCell?.value as Date)?.getDate()).toBe(15);
+
+    // Clean up
+    if (existsSync(testFile)) {
+      await import('fs').then((fs) => fs.promises.unlink(testFile));
+    }
+  });
+
   test('should handle streaming behavior with large dataset', async () => {
     // Create a large dataset
     const rows = [];

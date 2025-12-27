@@ -1,6 +1,7 @@
 import type * as yauzl from 'yauzl';
 import { openZip, readZipEntry, type ZipEntry } from '@zip/reader';
 import { parseXmlEvents } from '@xml/parser';
+import type { ReadOptions } from './types';
 import { Workbook, type SheetInfo } from './workbook';
 
 /**
@@ -54,7 +55,7 @@ async function parseWorkbook(
 /**
  * Reads an XLSX file and returns a Workbook instance
  */
-export async function readXlsx(filePath: string): Promise<Workbook> {
+export async function readXlsx(filePath: string, options?: ReadOptions): Promise<Workbook> {
   // Read file to buffer
   const file = Bun.file(filePath);
   if (!(await file.exists())) {
@@ -69,6 +70,6 @@ export async function readXlsx(filePath: string): Promise<Workbook> {
   const sheetInfos = await parseWorkbook(zipFile.zipFile, zipFile.entries);
 
   // Create Workbook instance
-  return new Workbook(zipFile, sheetInfos);
+  return new Workbook(zipFile, sheetInfos, options);
 }
 

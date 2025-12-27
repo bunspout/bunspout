@@ -1,3 +1,5 @@
+import type { ReadOptions } from '@xlsx/types';
+import { convertExcelTimestamp } from '@utils/dates';
 import type { Row, Cell, XmlEvent } from '../types';
 
 /**
@@ -6,6 +8,7 @@ import type { Row, Cell, XmlEvent } from '../types';
 export async function* parseSheet(
   xmlEvents: AsyncIterable<XmlEvent>,
   getSharedString?: (index: number) => string | undefined,
+  options?: ReadOptions,
 ): AsyncIterable<Row> {
   let currentRow: Partial<Row> | null = null;
   let currentCell: Partial<Cell> | null = null;
@@ -27,7 +30,9 @@ export async function* parseSheet(
         inCell = true;
         const cellType = event.attributes?.t;
         currentCell = {
-          type: cellType === 's' || cellType === 'inlineStr' ? 'string' : undefined,
+          type: cellType === 's' || cellType === 'inlineStr' ? 'string' :
+            cellType === 'd' ? 'date' :
+              cellType === 'b' ? 'boolean' : undefined,
         };
         // Reset inline string state when starting a new cell
         inInlineStr = false;
@@ -51,6 +56,22 @@ export async function* parseSheet(
           currentCell.value = '';
           currentCell.type = 'string';
         }
+
+        // Convert date cells if options are provided
+        if (options && currentCell.type === 'date' && typeof currentCell.value === 'number') {
+          try {
+            currentCell.value = convertExcelTimestamp(currentCell.value, options.use1904Dates ?? false);
+          } catch (error) {
+            // If conversion fails, keep the original numeric value
+            console.warn(`Failed to convert Excel date ${currentCell.value}:`, error);
+          }
+        }
+
+        // Convert boolean cells
+        if (currentCell.type === 'boolean' && typeof currentCell.value === 'number') {
+          currentCell.value = currentCell.value === 1;
+        }
+
         currentRow.cells!.push(currentCell as Cell);
         currentCell = null;
         inInlineStr = false;
@@ -84,7 +105,10 @@ export async function* parseSheet(
           // Try to parse as number if not explicitly a string
           if (currentCell.type !== 'string' && !isNaN(Number(text)) && text.trim() !== '') {
             currentCell.value = Number(text);
-            currentCell.type = 'number';
+            // Only set type to 'number' if it wasn't explicitly set from XML attributes
+            if (currentCell.type === undefined) {
+              currentCell.type = 'number';
+            }
           } else {
             currentCell.value = text;
             if (currentCell.type === undefined) {

@@ -151,5 +151,45 @@ describe('Row Parser', () => {
     expect(rows[0]?.cells[2]?.value).toBe('More');
     expect(rows[0]?.cells[2]?.type).toBe('string');
   });
+
+  test('should parse date cells with conversion', async () => {
+    // Excel date 1 = January 1, 1900
+    const xml = '<row><c t="d"><v>1</v></c></row>';
+    const bytes = async function* () {
+      yield new TextEncoder().encode(xml);
+    }();
+
+    const rows: Row[] = [];
+    for await (const row of parseSheet(parseXmlEvents(bytes), undefined, { use1904Dates: false })) {
+      rows.push(row);
+    }
+
+    expect(rows).toHaveLength(1);
+    const dateCell = rows[0]?.cells[0];
+    expect(dateCell?.type).toBe('date');
+    expect(dateCell?.value).toBeInstanceOf(Date);
+    expect((dateCell?.value as Date)?.getFullYear()).toBe(1900);
+    expect((dateCell?.value as Date)?.getMonth()).toBe(0); // January
+    expect((dateCell?.value as Date)?.getDate()).toBe(1);
+  });
+
+  test('should parse boolean cells', async () => {
+    const xml = '<row><c t="b"><v>1</v></c><c t="b"><v>0</v></c></row>';
+    const bytes = async function* () {
+      yield new TextEncoder().encode(xml);
+    }();
+
+    const rows: Row[] = [];
+    for await (const row of parseSheet(parseXmlEvents(bytes))) {
+      rows.push(row);
+    }
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.cells).toHaveLength(2);
+    expect(rows[0]?.cells[0]?.type).toBe('boolean');
+    expect(rows[0]?.cells[0]?.value).toBe(true);
+    expect(rows[0]?.cells[1]?.type).toBe('boolean');
+    expect(rows[0]?.cells[1]?.value).toBe(false);
+  });
 });
 

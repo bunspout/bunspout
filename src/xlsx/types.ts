@@ -66,3 +66,12 @@ export interface WriterOptions {
   sharedStrings?: 'inline' | 'shared'; // Default: 'inline'
 }
 
+export interface ReadOptions {
+  /**
+   * Use 1904-based calendar instead of 1900-based calendar for date parsing.
+   * Excel files can use either calendar system.
+   * @default false
+   */
+  use1904Dates?: boolean;
+}
+
