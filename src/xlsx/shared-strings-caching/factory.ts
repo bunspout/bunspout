@@ -81,8 +81,7 @@ export class CachingStrategyFactory {
   private isInMemoryStrategyUsageSafe(
     sharedStringsUniqueCount: number | null,
   ): boolean {
-    // Reject when the shared string count is unknown
-    if (sharedStringsUniqueCount === null) {
+    if (sharedStringsUniqueCount === null || sharedStringsUniqueCount < 0) {
       return false;
     }
 

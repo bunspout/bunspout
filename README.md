@@ -190,7 +190,7 @@ cell(null);            // Empty cell
 
 ## Limitations / Known Issues
 
-Bunspout focuses on fast, streaming Excel operations. The package is currently in the alpha stages.
+Bunspout focuses on fast, streaming Excel operations. The package is currently in the alpha stage.
 Here are current limitations:
 
 ### 🚫 **No Formula Evaluation**

@@ -154,8 +154,13 @@ export class Workbook {
    * Call this when you're done with the workbook to free up disk space and file handles
    */
   async cleanup(): Promise<void> {
+    // Clean up shared strings
     if (this.sharedStrings) {
-      await this.sharedStrings.cleanup();
+      try {
+        await this.sharedStrings.cleanup();
+      } catch {
+        // Ignore errors during cleanup
+      }
       this.sharedStrings = null;
     }
 

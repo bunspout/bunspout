@@ -307,7 +307,7 @@ async function main() {
   if (inMemoryMemMode > 0) {
     assert(
       inMemoryMemMode < MAX_MEMORY_BYTES,
-      `In-memory too much memory: ${(inMemoryMemMode / 1024 / 1024).toFixed(2)}MB > ${MAX_MEMORY_BYTES / 1024 / 1024}MB`,
+      `In-memory too much memory: ${(inMemoryMemMode / 1024 / 1024).toFixed(2)}MB > ${(MAX_MEMORY_BYTES / 1024 / 1024).toFixed(2)}MB`,
     );
   }
 

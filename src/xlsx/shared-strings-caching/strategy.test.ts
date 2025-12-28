@@ -181,6 +181,15 @@ describe('CachingStrategyFactory', () => {
     await strategy.cleanup();
   });
 
+  test('should reject negative counts and use file-based strategy', async () => {
+    const mockGetMemoryLimit = () => 1000000;
+    const factory = new CachingStrategyFactory(mockGetMemoryLimit);
+    // Negative count should be rejected and fall back to file-based strategy
+    const strategy = factory.createBestCachingStrategy(-1);
+    expect(strategy).toBeInstanceOf(FileBasedStrategy);
+    await strategy.cleanup();
+  });
+
   test('should export constants', () => {
     expect(IN_MEMORY_ENTRY_OVERHEAD_BYTES).toBe(48);
     expect(MAX_NUM_STRINGS_PER_TEMP_FILE).toBe(10000);
