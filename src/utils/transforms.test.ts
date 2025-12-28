@@ -14,7 +14,9 @@ describe('Row Transforms', () => {
         for (const r of rows) yield r;
       }(), (r) => ({
         ...r,
-        cells: r.cells.map((c) => ({ ...c, value: String(c.value).toUpperCase() })),
+        cells: r.cells
+          .filter((c): c is NonNullable<typeof c> => c != null)
+          .map((c) => ({ ...c, value: String(c.value).toUpperCase() })),
       }))) {
         result.push(row);
       }
@@ -30,7 +32,9 @@ describe('Row Transforms', () => {
         for (const r of rows) yield r;
       }(), async (r) => ({
         ...r,
-        cells: r.cells.map((c) => ({ ...c, value: Number(c.value) * 2 })),
+        cells: r.cells
+          .filter((c): c is NonNullable<typeof c> => c != null)
+          .map((c) => ({ ...c, value: Number(c.value) * 2 })),
       }))) {
         result.push(row);
       }

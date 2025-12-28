@@ -173,4 +173,149 @@ describe('Integration Tests', () => {
     expect(readRows[0]?.cells[0]?.value).toBe('Row0');
     expect(readRows[99]?.cells[0]?.value).toBe('Row99');
   });
+
+  test('should maintain consistency across multiple sheet iterations', async () => {
+    // Create a test file with multiple sheets containing diverse data types
+    await writeXlsx(testFile, {
+      sheets: [
+        {
+          name: 'Sheet1',
+          rows: (async function* () {
+            yield row([cell('Name'), cell('Age'), cell('Salary')]);
+            yield row([cell('Alice'), cell(30), cell(50000.50)]);
+            yield row([cell('Bob'), cell(25), cell(45000)]);
+            yield row([cell(''), cell(null), cell('')]); // Empty cells
+          })(),
+        },
+        {
+          name: 'Sheet2',
+          rows: (async function* () {
+            yield row([cell('Product'), cell('Price'), cell('Date')]);
+            yield row([cell('Laptop'), cell(1200.99), cell(new Date('2024-01-15'))]);
+            yield row([cell('Mouse'), cell(25.50), cell(new Date('2024-02-20'))]);
+            yield row([cell(''), cell(0), cell(null)]); // Mixed empty cells
+            yield row([cell('Keyboard'), cell(75), cell(new Date('2024-03-10'))]);
+          })(),
+        },
+        {
+          name: 'Sheet3',
+          rows: (async function* () {
+            yield row([cell('ID'), cell('Status')]);
+            yield row([cell(1), cell('Active')]);
+            yield row([cell(2), cell('Inactive')]);
+            // Empty row follows
+            yield row([], { rowIndex: 4 }); // Explicitly empty row
+            yield row([cell(3), cell('Pending')]);
+          })(),
+        },
+      ],
+    });
+
+    // First iteration: collect all sheet data
+    const workbook1 = await readXlsx(testFile);
+    const firstIterationData: Array<{
+      name: string;
+      index: number;
+      rows: Array<{
+        rowIndex: number;
+        cells: Array<{ value: any; type: string }>;
+      }>;
+    }> = [];
+
+    let sheetIndex = 0;
+    for (const sheet of workbook1.sheets()) {
+      const sheetData = {
+        name: sheet.name,
+        index: sheetIndex,
+        rows: [] as Array<{
+          rowIndex: number;
+          cells: Array<{ value: any; type: string }>;
+        }>,
+      };
+
+      for await (const row of sheet.rows()) {
+        sheetData.rows.push({
+          rowIndex: row.rowIndex ?? 0,
+          cells: row.cells.map(cell => ({
+            value: cell?.value,
+            type: cell?.type ?? 'unknown',
+          })),
+        });
+      }
+
+      firstIterationData.push(sheetData);
+      sheetIndex++;
+    }
+
+    // Second iteration: collect all sheet data again
+    const workbook2 = await readXlsx(testFile);
+    const secondIterationData: Array<{
+      name: string;
+      index: number;
+      rows: Array<{
+        rowIndex: number;
+        cells: Array<{ value: any; type: string }>;
+      }>;
+    }> = [];
+
+    sheetIndex = 0;
+    for (const sheet of workbook2.sheets()) {
+      const sheetData = {
+        name: sheet.name,
+        index: sheetIndex,
+        rows: [] as Array<{
+          rowIndex: number;
+          cells: Array<{ value: any; type: string }>;
+        }>,
+      };
+
+      for await (const row of sheet.rows()) {
+        sheetData.rows.push({
+          rowIndex: row.rowIndex ?? 0,
+          cells: row.cells.map(cell => ({
+            value: cell?.value,
+            type: cell?.type ?? 'unknown',
+          })),
+        });
+      }
+
+      secondIterationData.push(sheetData);
+      sheetIndex++;
+    }
+
+    // Assertions: Verify complete consistency between iterations
+
+    // Same number of sheets
+    expect(secondIterationData).toHaveLength(firstIterationData.length);
+
+    // Each sheet has same name and index
+    for (let i = 0; i < firstIterationData.length; i++) {
+      const firstSheet = firstIterationData[i]!;
+      const secondSheet = secondIterationData[i]!;
+
+      expect(secondSheet.name).toBe(firstSheet.name);
+      expect(secondSheet.index).toBe(firstSheet.index);
+
+      // Same number of rows
+      expect(secondSheet.rows).toHaveLength(firstSheet.rows.length);
+
+      // Each row has same data
+      for (let j = 0; j < firstSheet.rows.length; j++) {
+        const firstRow = firstSheet.rows[j]!;
+        const secondRow = secondSheet.rows[j]!;
+
+        expect(secondRow.rowIndex).toBe(firstRow.rowIndex);
+        expect(secondRow.cells).toHaveLength(firstRow.cells.length);
+
+        // Each cell has same value and type
+        for (let k = 0; k < firstRow.cells.length; k++) {
+          const firstCell = firstRow.cells[k]!;
+          const secondCell = secondRow.cells[k]!;
+
+          expect(secondCell.value).toEqual(firstCell.value);
+          expect(secondCell.type).toBe(firstCell.type);
+        }
+      }
+    }
+  });
 });

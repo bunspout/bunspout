@@ -1,4 +1,5 @@
 import type { ColumnWidthDefinition, SheetColumnWidthOptions, RowHeightDefinition } from '@xlsx/types';
+import { getCellReference } from '@utils/cell-reference';
 import { ColumnWidthTracker } from '@utils/column-widths';
 import { escapeXml } from '@utils/xml';
 import type { Row, Cell } from '../types';
@@ -52,32 +53,6 @@ export interface SerializeRowOptions {
    * Used for auto-inferring row indices when row.rowIndex is undefined.
    */
   rowIndex?: number;
-}
-
-/**
- * Converts a column index (0-based) to Excel column letter (A, B, ..., Z, AA, AB, ...)
- * @param colIndex - Column index (0-based: 0 = A, 1 = B, etc.)
- * @returns Excel column letter(s)
- */
-function columnIndexToLetter(colIndex: number): string {
-  let result = '';
-  colIndex++; // Convert to 1-based
-  while (colIndex > 0) {
-    colIndex--;
-    result = String.fromCharCode(65 + (colIndex % 26)) + result;
-    colIndex = Math.floor(colIndex / 26);
-  }
-  return result;
-}
-
-/**
- * Generates a cell reference (e.g., "A1", "B2") from row and column indices
- * @param rowIndex - Row index (1-based: 1 = first row)
- * @param colIndex - Column index (0-based: 0 = A, 1 = B, etc.)
- * @returns Excel cell reference string
- */
-function getCellReference(rowIndex: number, colIndex: number): string {
-  return `${columnIndexToLetter(colIndex)}${rowIndex}`;
 }
 
 /**

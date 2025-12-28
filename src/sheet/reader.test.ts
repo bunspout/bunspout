@@ -191,5 +191,141 @@ describe('Row Parser', () => {
     expect(rows[0]?.cells[1]?.type).toBe('boolean');
     expect(rows[0]?.cells[1]?.value).toBe(false);
   });
+
+  test('should handle cells with explicit references out of order', async () => {
+    // B1 comes first, then A1 - A1 should correctly overwrite the empty placeholder at index 0
+    const xml = '<row><c r="B1"><v>B1Value</v></c><c r="A1"><v>A1Value</v></c></row>';
+    const bytes = async function* () {
+      yield new TextEncoder().encode(xml);
+    }();
+
+    const rows: Row[] = [];
+    for await (const row of parseSheet(parseXmlEvents(bytes))) {
+      rows.push(row);
+    }
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.cells).toHaveLength(2);
+    expect(rows[0]?.cells[0]?.value).toBe('A1Value'); // A1 at index 0
+    expect(rows[0]?.cells[1]?.value).toBe('B1Value'); // B1 at index 1
+  });
+
+  test('should handle cells with explicit references in reverse order', async () => {
+    // C1, B1, A1 in that order - all should be placed correctly
+    const xml = '<row><c r="C1"><v>C1Value</v></c><c r="B1"><v>B1Value</v></c><c r="A1"><v>A1Value</v></c></row>';
+    const bytes = async function* () {
+      yield new TextEncoder().encode(xml);
+    }();
+
+    const rows: Row[] = [];
+    for await (const row of parseSheet(parseXmlEvents(bytes))) {
+      rows.push(row);
+    }
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.cells).toHaveLength(3);
+    expect(rows[0]?.cells[0]?.value).toBe('A1Value'); // A1 at index 0
+    expect(rows[0]?.cells[1]?.value).toBe('B1Value'); // B1 at index 1
+    expect(rows[0]?.cells[2]?.value).toBe('C1Value'); // C1 at index 2
+  });
+
+  test('should handle mixed explicit and implicit cell references', async () => {
+    // Mix of cells with and without explicit r attributes
+    // B1 (explicit), then implicit cell, then A1 (explicit)
+    const xml = '<row><c r="B1"><v>B1Value</v></c><c><v>ImplicitValue</v></c><c r="A1"><v>A1Value</v></c></row>';
+    const bytes = async function* () {
+      yield new TextEncoder().encode(xml);
+    }();
+
+    const rows: Row[] = [];
+    for await (const row of parseSheet(parseXmlEvents(bytes))) {
+      rows.push(row);
+    }
+
+    expect(rows).toHaveLength(1);
+    // B1 creates [empty, B1Value], implicit appends [empty, B1Value, ImplicitValue], A1 overwrites index 0
+    expect(rows[0]?.cells).toHaveLength(3);
+    expect(rows[0]?.cells[0]?.value).toBe('A1Value'); // A1 at index 0 (overwrites empty placeholder)
+    expect(rows[0]?.cells[1]?.value).toBe('B1Value'); // B1 at index 1
+    expect(rows[0]?.cells[2]?.value).toBe('ImplicitValue'); // Implicit cell at index 2
+  });
+
+  test('should accumulate text from multiple rich text runs in inline strings', async () => {
+    // Inline string with multiple rich text runs (<r> elements)
+    // Each <r><t>...</t></r> should contribute to the final value
+    // Note: Excel stores exactly what's typed - if there's no space in the XML, there's no space in the result
+    const xml = '<row><c t="inlineStr"><is><r><t>Bold</t></r><r><t>Normal</t></r></is></c></row>';
+    const bytes = async function* () {
+      yield new TextEncoder().encode(xml);
+    }();
+
+    const rows: Row[] = [];
+    for await (const row of parseSheet(parseXmlEvents(bytes))) {
+      rows.push(row);
+    }
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.cells).toHaveLength(1);
+    // Should accumulate "Bold" + "Normal" = "BoldNormal" (no space - Excel stores exactly what's in XML)
+    expect(rows[0]?.cells[0]?.value).toBe('BoldNormal');
+    expect(rows[0]?.cells[0]?.type).toBe('string');
+  });
+
+  test('should preserve spaces in rich text runs when present in XML', async () => {
+    // Inline string with multiple rich text runs where spaces are part of the text content
+    // This demonstrates that Excel stores exactly what's typed - spaces must be in the XML
+    const xml = '<row><c t="inlineStr"><is><r><t>Bold </t></r><r><t>Normal</t></r></is></c></row>';
+    const bytes = async function* () {
+      yield new TextEncoder().encode(xml);
+    }();
+
+    const rows: Row[] = [];
+    for await (const row of parseSheet(parseXmlEvents(bytes))) {
+      rows.push(row);
+    }
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.cells).toHaveLength(1);
+    // Should accumulate "Bold " + "Normal" = "Bold Normal" (space preserved from XML)
+    expect(rows[0]?.cells[0]?.value).toBe('Bold Normal');
+    expect(rows[0]?.cells[0]?.type).toBe('string');
+  });
+
+  test('should handle inline string with single text element (no rich text runs)', async () => {
+    // Inline string with <t> directly under <is> (no <r> wrapper)
+    const xml = '<row><c t="inlineStr"><is><t>Simple Text</t></is></c></row>';
+    const bytes = async function* () {
+      yield new TextEncoder().encode(xml);
+    }();
+
+    const rows: Row[] = [];
+    for await (const row of parseSheet(parseXmlEvents(bytes))) {
+      rows.push(row);
+    }
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.cells).toHaveLength(1);
+    expect(rows[0]?.cells[0]?.value).toBe('Simple Text');
+    expect(rows[0]?.cells[0]?.type).toBe('string');
+  });
+
+  test('should handle inline string with multiple rich text runs and empty text', async () => {
+    // Test accumulation with empty text elements
+    const xml = '<row><c t="inlineStr"><is><r><t>First</t></r><r><t></t></r><r><t>Last</t></r></is></c></row>';
+    const bytes = async function* () {
+      yield new TextEncoder().encode(xml);
+    }();
+
+    const rows: Row[] = [];
+    for await (const row of parseSheet(parseXmlEvents(bytes))) {
+      rows.push(row);
+    }
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.cells).toHaveLength(1);
+    // Should accumulate "First" + "" + "Last" = "FirstLast"
+    expect(rows[0]?.cells[0]?.value).toBe('FirstLast');
+    expect(rows[0]?.cells[0]?.type).toBe('string');
+  });
 });
 
