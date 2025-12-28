@@ -24,11 +24,29 @@ export class FileBasedStrategy implements SharedStringsCachingStrategy {
     const fileIndex = Math.floor(index / this.maxStringsPerFile);
     const localIndex = index % this.maxStringsPerFile;
 
-    // If we need a new file, flush the current one
-    if (fileIndex > this.currentFileIndex) {
+    // If we need to switch files, flush the current one and load the target file
+    if (fileIndex !== this.currentFileIndex) {
       await this.flushCurrentFile();
+
+      // Load the target file if it exists, otherwise start with empty array
+      if (this.fileCache.has(fileIndex)) {
+        this.currentFileStrings = this.fileCache.get(fileIndex)!;
+      } else {
+        // Check if file exists on disk
+        const filePath = this.getFilePath(fileIndex);
+        try {
+          const content = await readFile(filePath, 'utf-8');
+          const strings = JSON.parse(content) as string[];
+          this.currentFileStrings = strings;
+          this.fileCache.set(fileIndex, strings);
+          this.lastLoadedFileIndex = fileIndex;
+        } catch {
+          // File doesn't exist yet, start with empty array
+          this.currentFileStrings = [];
+        }
+      }
+
       this.currentFileIndex = fileIndex;
-      this.currentFileStrings = [];
     }
 
     // Ensure array is large enough
@@ -39,6 +57,10 @@ export class FileBasedStrategy implements SharedStringsCachingStrategy {
         newArray[i] = this.currentFileStrings[i];
       }
       this.currentFileStrings = newArray;
+      // Update cache if this file is cached (array reference changed after resize)
+      if (this.fileCache.has(fileIndex)) {
+        this.fileCache.set(fileIndex, this.currentFileStrings);
+      }
     }
 
     this.currentFileStrings[localIndex] = value;
