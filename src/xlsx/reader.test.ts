@@ -776,12 +776,15 @@ describe('XLSXReader', () => {
     );
     expect(sharedStringsEntry).toBeDefined();
 
-    const strings = await parseSharedStrings(sharedStringsEntry!, zipFile.zipFile);
+    const strategy = await parseSharedStrings(sharedStringsEntry!, zipFile.zipFile);
     // Should parse all strings even without count metadata
-    expect(strings).toHaveLength(3);
-    expect(strings[0]).toBe('First');
-    expect(strings[1]).toBe('Second');
-    expect(strings[2]).toBe('Third');
+    expect(strategy.getCount()).toBe(3);
+    expect(await strategy.getString(0)).toBe('First');
+    expect(await strategy.getString(1)).toBe('Second');
+    expect(await strategy.getString(2)).toBe('Third');
+
+    // Cleanup
+    await strategy.cleanup();
   });
 
   test('should handle capital shared strings filename', async () => {

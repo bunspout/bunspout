@@ -4,6 +4,7 @@ import { readZipEntry } from '@zip/reader';
 import { parseXmlEvents } from '@xml/parser';
 import type { Row } from '../types';
 import { parseCoreProperties, parseCustomProperties } from './properties-reader';
+import type { SharedStringsCachingStrategy } from './shared-strings-caching';
 import { parseSharedStrings } from './shared-strings-reader';
 import type { SheetProperties } from './sheet-properties-reader';
 import type { ReadOptions, WorkbookProperties } from './types';
@@ -16,9 +17,9 @@ export type SheetInfo = {
 
 export class Workbook {
   private zip: ZipFile;
-  private _sheets: Sheet[];
-  private sharedStrings: string[] | null = null;
-  private options?: ReadOptions;
+  private readonly _sheets: Sheet[];
+  private sharedStrings: SharedStringsCachingStrategy | null = null;
+  private readonly options?: ReadOptions;
   private _properties: WorkbookProperties | null = null;
 
   constructor(zip: ZipFile, sheetInfos: SheetInfo[], options?: ReadOptions) {
@@ -91,18 +92,20 @@ export class Workbook {
         this.zip.zipFile,
       );
     } else {
-      this.sharedStrings = [];
+      // Create an empty in-memory strategy when there are no shared strings
+      const { InMemoryStrategy } = await import('./shared-strings-caching');
+      this.sharedStrings = new InMemoryStrategy(0);
     }
   }
 
   /**
    * Gets a string from the shared strings table by index
    */
-  getSharedString(index: number): string | undefined {
+  async getSharedString(index: number): Promise<string | undefined> {
     if (!this.sharedStrings) {
       return undefined;
     }
-    return this.sharedStrings[index];
+    return await this.sharedStrings.getString(index);
   }
 
   /**
@@ -144,6 +147,35 @@ export class Workbook {
    */
   sheets(): Sheet[] {
     return [...this._sheets];
+  }
+
+  /**
+   * Cleans up any temporary resources (e.g., file-based shared strings cache, zip file)
+   * Call this when you're done with the workbook to free up disk space and file handles
+   */
+  async cleanup(): Promise<void> {
+    // Clean up shared strings
+    if (this.sharedStrings) {
+      try {
+        await this.sharedStrings.cleanup();
+      } catch {
+        // Ignore errors during cleanup
+      }
+      this.sharedStrings = null;
+    }
+
+    // Close the zip file
+    if (this.zip?.zipFile) {
+      try {
+        this.zip.zipFile.close();
+      } catch {
+        // Ignore errors during cleanup
+      }
+    }
+  }
+
+  async [Symbol.asyncDispose]() {
+    await this.cleanup();
   }
 }
 

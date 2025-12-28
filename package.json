@@ -2,11 +2,12 @@
   "name": "bunspout",
   "module": "index.ts",
   "type": "module",
+  "version": "0.0.1",
   "scripts": {
-    "test": "bun test",
-    "bench": "for file in src/tests/benchmarks/*.bench.ts; do bun run \"$file\"; done",
+    "bench": "for file in src/tests/benchmarks/*.bench.ts; do bun --expose-gc run \"$file\"; done",
     "lint": "bun run typecheck && eslint .",
     "lint:fix": "eslint . --fix",
+    "test": "bun test",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

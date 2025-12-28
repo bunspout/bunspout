@@ -45,6 +45,7 @@ bun run src/tests/benchmarks/write-sheet-xml.bench.ts
 - **Structure**: `structure.ts` - XLSX file organization
 - **Properties**: `properties.ts` - Document metadata
 - **Strings**: `shared-strings.ts` - String deduplication
+- **Caching**: `shared-strings-caching/` - Memory-aware caching strategies for shared strings
 
 ## JIT Index Hints
 - Find writer function: `rg -n "export.*writeXlsx"`

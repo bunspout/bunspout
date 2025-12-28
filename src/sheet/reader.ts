@@ -8,7 +8,7 @@ import type { Cell, Row, XmlEvent } from '../types';
  */
 export async function* parseSheet(
   xmlEvents: AsyncIterable<XmlEvent>,
-  getSharedString?: (index: number) => string | undefined,
+  getSharedString?: (index: number) => Promise<string | undefined>,
   options?: ReadOptions,
 ): AsyncIterable<Row> {
   let currentRow: Partial<Row> | null = null;
@@ -184,7 +184,7 @@ export async function* parseSheet(
         if (currentCell.type === 'string' && getSharedString) {
           const index = parseInt(text, 10);
           if (!isNaN(index)) {
-            const sharedString = getSharedString(index);
+            const sharedString = await getSharedString(index);
             if (sharedString !== undefined) {
               currentCell.value = sharedString;
             } else {

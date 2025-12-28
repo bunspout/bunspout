@@ -49,7 +49,8 @@ await writeXlsx('output.xlsx', {
 ```typescript
 import { readXlsx } from 'bunspout';
 
-const workbook = await readXlsx('input.xlsx');
+// Node.js 20.6.0+ and Bun: automatic cleanup with await using
+await using workbook = await readXlsx('input.xlsx');
 
 // Access sheets by name or index
 const sheet = workbook.sheet('Data'); // or workbook.sheet(0)
@@ -58,6 +59,15 @@ const sheet = workbook.sheet('Data'); // or workbook.sheet(0)
 for await (const row of sheet.rows()) {
   console.log(row.cells.map(cell => cell.value));
 }
+// Automatically cleaned up when exiting scope
+```
+
+**For Node.js < 20.6.0:** Explicitly call `cleanup()` when done:
+
+```typescript
+const workbook = await readXlsx('input.xlsx');
+// ... use workbook ...
+await workbook.cleanup(); // Release temporary files and zip file handles
 ```
 
 ### Working with Large Datasets
@@ -180,7 +190,8 @@ cell(null);            // Empty cell
 
 ## Limitations / Known Issues
 
-Bunspout focuses on fast, streaming Excel operations. Here are current limitations:
+Bunspout focuses on fast, streaming Excel operations. The package is currently in the alpha stage.
+Here are current limitations:
 
 ### 🚫 **No Formula Evaluation**
 - Formulas are stored as text (strings starting with `=`)
@@ -199,8 +210,8 @@ Bunspout focuses on fast, streaming Excel operations. Here are current limitatio
 - Use case: Data export for further processing in Excel/other tools
 
 ### 🔢 **Data Type Constraints**
-- Large numbers may lose precision in Excel (Excel's limit: 15 significant digits)
-- Very long text may be truncated in some Excel versions
+- Large numbers may lose precision in Excel (Excel's limit: 15 significant digits) - bunspout passes numbers through without validation; Excel handles precision according to its own rules
+- Very long text may be truncated in some Excel versions - bunspout does not limit text length; any truncation is Excel's behavior
 - Date handling follows Excel's date serial number system
 
 ### 📈 **Performance Considerations**
