@@ -4,12 +4,12 @@ import { convertExcelTimestamp } from '@utils/dates';
 import type { Cell, Row, XmlEvent } from '../types';
 
 /**
- * Checks if a row is empty (no cells or all cells are empty strings/null)
+ * Checks if a row is empty (no cells or all cells are empty strings/null/undefined)
  */
 function isEmptyRow(row: Partial<Row> | null): boolean {
   if (!row || !row.cells) return true;
   if (row.cells.length === 0) return true;
-  return row.cells.every(cell => cell && (cell.value === '' || cell.value === null));
+  return row.cells.every(cell => !cell || cell.value === '' || cell.value === null);
 }
 
 /**
