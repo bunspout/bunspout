@@ -11,12 +11,15 @@ import {
 import type { Cell, Row, XmlEvent } from '../types';
 
 /**
- * Checks if a row is empty (no cells or all cells are empty strings/null/undefined)
+ * Checks if a row is empty (no cells or all cells are empty strings/undefined)
+ * Note: Cells with null values are NOT considered empty - null represents invalid but present data
  */
 function isEmptyRow(row: Partial<Row> | null): boolean {
   if (!row || !row.cells) return true;
   if (row.cells.length === 0) return true;
-  return row.cells.every(cell => !cell || cell.value === '' || cell.value === null);
+  // A cell is empty if it's missing (undefined/null) or has an empty string value
+  // A cell with null value is NOT empty - it represents invalid but present data
+  return row.cells.every(cell => !cell || cell.value === '');
 }
 
 /**
@@ -190,8 +193,8 @@ export async function* parseSheet(
             let isDate = currentCell.type === 'date';
             let formatCode: string | null = null;
 
-            // If date formatting is enabled, check format code
-            if (options.shouldFormatDates && styleFormatMap && currentCellStyleIndex !== undefined) {
+            // Check format code to detect dates
+            if (styleFormatMap && currentCellStyleIndex !== undefined) {
               formatCode = getFormatCodeForStyle(currentCellStyleIndex, styleFormatMap);
               if (formatCode && isDateFormatCode(formatCode)) {
                 isDate = true;

@@ -161,13 +161,8 @@ export class Workbook {
    * Reads rows from a sheet entry
    */
   async *readSheetRows(entry: ZipEntry): AsyncIterable<Row> {
-    // Ensure shared strings are loaded
     await this.loadSharedStrings();
-
-    // Load styles if date formatting is enabled
-    const styleFormatMap = this.options?.shouldFormatDates
-      ? await this.getStyleFormatMap()
-      : new Map<number, string>();
+    const styleFormatMap = await this.getStyleFormatMap();
 
     // Stream XML directly from ZIP to parser (no accumulation)
     yield* parseSheet(

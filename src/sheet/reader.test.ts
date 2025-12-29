@@ -616,6 +616,39 @@ describe('Row Parser', () => {
     expect(dateCell?.value).toBe('01/13/2016');
   });
 
+  test('should detect dates from numeric cells with date format codes', async () => {
+    // Excel date 42382 = January 13, 2016
+    // Cell has numeric value but date format code (no t="d" attribute)
+    // This tests that date detection works regardless of shouldFormatDates
+    const xml = '<row><c s="1"><v>42382</v></c></row>';
+    const bytes = async function* () {
+      yield new TextEncoder().encode(xml);
+    }();
+
+    // Create a style format map with date format code
+    const styleFormatMap = new Map<number, string>();
+    styleFormatMap.set(1, 'MM/DD/YYYY');
+
+    const rows: Row[] = [];
+    for await (const row of parseSheet(
+      parseXmlEvents(bytes),
+      undefined,
+      { use1904Dates: false, shouldFormatDates: false },
+      styleFormatMap,
+    )) {
+      rows.push(row);
+    }
+
+    expect(rows).toHaveLength(1);
+    const dateCell = rows[0]?.cells[0];
+    expect(dateCell?.type).toBe('date');
+    // Should return Date object, not formatted string
+    expect(dateCell?.value).toBeInstanceOf(Date);
+    expect((dateCell?.value as Date)?.getFullYear()).toBe(2016);
+    expect((dateCell?.value as Date)?.getMonth()).toBe(0); // January
+    expect((dateCell?.value as Date)?.getDate()).toBe(13);
+  });
+
   test('should format dates with time format codes', async () => {
     // Excel date with time: 42382.2 = January 13, 2016 4:48:00 AM
     const xml = '<row><c s="1"><v>42382.2</v></c></row>';
