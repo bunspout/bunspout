@@ -443,8 +443,9 @@ describe('Row Parser', () => {
     expect(parsedRows[4]?.cells[0]?.value).toBe('Row5');
   });
 
-  test('should handle rows with null values as empty', async () => {
-    // Test that rows with null values are considered empty
+  test('should not treat rows with null values as empty', async () => {
+    // Test that rows with null values are NOT considered empty
+    // Null represents invalid but present data (e.g., invalid dates), so the row should be returned
     const xmlWithNulls = `<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
   <sheetData>
     <row r="1">
