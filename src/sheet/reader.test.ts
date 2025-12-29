@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, test, expect } from 'bun:test';
 import { parseXmlEvents } from '@xml/parser';
 import { parseSheet } from './reader';
@@ -106,12 +107,199 @@ describe('Row Parser', () => {
     }();
 
     const rows: Row[] = [];
-    for await (const row of parseSheet(parseXmlEvents(bytes))) {
+    for await (const row of parseSheet(parseXmlEvents(bytes), undefined, { skipEmptyRows: false })) {
       rows.push(row);
     }
 
     expect(rows).toHaveLength(1);
     expect(rows[0]?.cells).toHaveLength(0);
+  });
+
+  test('should skip empty rows by default', async () => {
+    // Create XML with empty rows between data rows
+    const xmlWithEmptyRows = `<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <sheetData>
+    <row r="1">
+      <c r="A1" t="inlineStr"><is><t>Data1</t></is></c>
+    </row>
+    <row r="2">
+      <!-- Empty row with no cells -->
+    </row>
+    <row r="3">
+      <c r="A3" t="inlineStr"><is><t>Data2</t></is></c>
+    </row>
+    <row r="4">
+      <c r="A4"></c>
+      <c r="B4"></c>
+      <!-- Row with empty cells -->
+    </row>
+    <row r="5">
+      <c r="A5" t="inlineStr"><is><t>Data3</t></is></c>
+    </row>
+  </sheetData>
+</worksheet>`;
+
+    const bytes = async function* () {
+      yield new TextEncoder().encode(xmlWithEmptyRows);
+    }();
+
+    const parsedRows: any[] = [];
+    for await (const row of parseSheet(parseXmlEvents(bytes))) {
+      parsedRows.push(row);
+    }
+
+    // Should skip empty rows (default behavior)
+    expect(parsedRows).toHaveLength(3);
+    expect(parsedRows[0]?.cells[0]?.value).toBe('Data1');
+    expect(parsedRows[1]?.cells[0]?.value).toBe('Data2');
+    expect(parsedRows[2]?.cells[0]?.value).toBe('Data3');
+  });
+
+  test('should include empty rows when skipEmptyRows is false', async () => {
+    // Create XML with empty rows between data rows
+    const xmlWithEmptyRows = `<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <sheetData>
+    <row r="1">
+      <c r="A1" t="inlineStr"><is><t>Data1</t></is></c>
+    </row>
+    <row r="2">
+      <!-- Empty row with no cells -->
+    </row>
+    <row r="3">
+      <c r="A3" t="inlineStr"><is><t>Data2</t></is></c>
+    </row>
+    <row r="4">
+      <c r="A4"></c>
+      <c r="B4"></c>
+      <!-- Row with empty cells -->
+    </row>
+    <row r="5">
+      <c r="A5" t="inlineStr"><is><t>Data3</t></is></c>
+    </row>
+  </sheetData>
+</worksheet>`;
+
+    const bytes = async function* () {
+      yield new TextEncoder().encode(xmlWithEmptyRows);
+    }();
+
+    const parsedRows: any[] = [];
+    for await (const row of parseSheet(parseXmlEvents(bytes), undefined, { skipEmptyRows: false })) {
+      parsedRows.push(row);
+    }
+
+    // Should include all rows, including empty ones
+    expect(parsedRows).toHaveLength(5);
+    expect(parsedRows[0]?.cells[0]?.value).toBe('Data1');
+    // Row 2 is empty (no cells)
+    expect(parsedRows[1]?.cells).toHaveLength(0);
+    expect(parsedRows[2]?.cells[0]?.value).toBe('Data2');
+    // Row 4 has empty cells
+    expect(parsedRows[3]?.cells).toHaveLength(2);
+    expect(parsedRows[3]?.cells[0]?.value).toBe('');
+    expect(parsedRows[3]?.cells[1]?.value).toBe('');
+    expect(parsedRows[4]?.cells[0]?.value).toBe('Data3');
+  });
+
+  test('should skip empty rows when reading XML (default behavior)', async () => {
+    // Create XML with gaps in row numbers (simulating empty rows)
+    const xmlWithEmptyRows = `<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <sheetData>
+    <row r="1">
+      <c r="A1" t="inlineStr"><is><t>Row1</t></is></c>
+    </row>
+    <row r="3">
+      <c r="A3" t="inlineStr"><is><t>Row3</t></is></c>
+    </row>
+    <row r="5">
+      <c r="A5" t="inlineStr"><is><t>Row5</t></is></c>
+    </row>
+  </sheetData>
+</worksheet>`;
+
+    const bytes = async function* () {
+      yield new TextEncoder().encode(xmlWithEmptyRows);
+    }();
+
+    const parsedRows: any[] = [];
+    for await (const row of parseSheet(parseXmlEvents(bytes))) {
+      parsedRows.push(row);
+    }
+
+    // Should only return rows with data (default skipEmptyRows behavior)
+    expect(parsedRows).toHaveLength(3);
+    expect(parsedRows[0]?.cells[0]?.value).toBe('Row1');
+    expect(parsedRows[1]?.cells[0]?.value).toBe('Row3');
+    expect(parsedRows[2]?.cells[0]?.value).toBe('Row5');
+  });
+
+  test('should include empty rows when skipEmptyRows is false (with empty cells)', async () => {
+    // Create XML with empty rows between data rows
+    const xmlWithEmptyRows = `<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <sheetData>
+    <row r="1">
+      <c r="A1" t="inlineStr"><is><t>Row1</t></is></c>
+    </row>
+    <row r="2">
+      <!-- Empty row -->
+    </row>
+    <row r="3">
+      <c r="A3" t="inlineStr"><is><t>Row3</t></is></c>
+    </row>
+    <row r="4">
+      <c r="A4"></c>
+      <!-- Row with empty cell -->
+    </row>
+    <row r="5">
+      <c r="A5" t="inlineStr"><is><t>Row5</t></is></c>
+    </row>
+  </sheetData>
+</worksheet>`;
+
+    const bytes = async function* () {
+      yield new TextEncoder().encode(xmlWithEmptyRows);
+    }();
+
+    const parsedRows: any[] = [];
+    for await (const row of parseSheet(parseXmlEvents(bytes), undefined, { skipEmptyRows: false })) {
+      parsedRows.push(row);
+    }
+
+    // Should include all rows including empty ones
+    expect(parsedRows).toHaveLength(5);
+    expect(parsedRows[0]?.cells[0]?.value).toBe('Row1');
+    expect(parsedRows[1]?.cells).toHaveLength(0); // Empty row
+    expect(parsedRows[2]?.cells[0]?.value).toBe('Row3');
+    expect(parsedRows[3]?.cells[0]?.value).toBe(''); // Row with empty cell
+    expect(parsedRows[4]?.cells[0]?.value).toBe('Row5');
+  });
+
+  test('should handle rows with null values as empty', async () => {
+    // Test that rows with null values are considered empty
+    const xmlWithNulls = `<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <sheetData>
+    <row r="1">
+      <c r="A1" t="d"><v>-700000</v></c>
+      <!-- Invalid date becomes null -->
+    </row>
+    <row r="2">
+      <c r="A2" t="inlineStr"><is><t>Valid</t></is></c>
+    </row>
+  </sheetData>
+</worksheet>`;
+
+    const bytes = async function* () {
+      yield new TextEncoder().encode(xmlWithNulls);
+    }();
+
+    const parsedRows: any[] = [];
+    for await (const row of parseSheet(parseXmlEvents(bytes), undefined, { use1904Dates: false })) {
+      parsedRows.push(row);
+    }
+
+    // Row with null value should be considered empty and skipped by default
+    expect(parsedRows).toHaveLength(1);
+    expect(parsedRows[0]?.cells[0]?.value).toBe('Valid');
   });
 
   test('should parse inline strings', async () => {
@@ -326,6 +514,99 @@ describe('Row Parser', () => {
     // Should accumulate "First" + "" + "Last" = "FirstLast"
     expect(rows[0]?.cells[0]?.value).toBe('FirstLast');
     expect(rows[0]?.cells[0]?.type).toBe('string');
+  });
+
+  test('should handle strict OOXML files', async () => {
+    // Test that strict OOXML format (with proper namespace declarations) works correctly
+    // Strict OOXML requires all namespaces to be properly declared
+    const strictOOXML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheetData>
+    <row r="1" xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+      <c r="A1" t="inlineStr" xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+        <is xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+          <t xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">Strict OOXML</t>
+        </is>
+      </c>
+      <c r="B1" xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+        <v xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">42</v>
+      </c>
+    </row>
+    <row r="2" xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+      <c r="A2" t="s" xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+        <v xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">0</v>
+      </c>
+    </row>
+  </sheetData>
+</worksheet>`;
+
+    const bytes = async function* () {
+      yield new TextEncoder().encode(strictOOXML);
+    }();
+
+    const parsedRows: any[] = [];
+    for await (const row of parseSheet(parseXmlEvents(bytes))) {
+      parsedRows.push(row);
+    }
+
+    // Verify that strict OOXML format is parsed correctly
+    expect(parsedRows).toHaveLength(2);
+
+    // First row: inline string and number
+    expect(parsedRows[0]?.cells).toHaveLength(2);
+    expect(parsedRows[0]?.cells[0]?.value).toBe('Strict OOXML');
+    expect(parsedRows[0]?.cells[0]?.type).toBe('string');
+    expect(parsedRows[0]?.cells[1]?.value).toBe(42);
+    expect(parsedRows[0]?.cells[1]?.type).toBe('number'); // Number type is inferred
+
+    // Second row: shared string reference
+    expect(parsedRows[1]?.cells).toHaveLength(1);
+    // Note: shared string index 0 would need to be resolved, but we're testing parsing
+    expect(parsedRows[1]?.cells[0]?.type).toBe('string');
+  });
+
+  test('should skip pronunciation data in Japanese text', async () => {
+    // Create XML with Japanese text containing pronunciation data (ruby annotations)
+    // This simulates what Excel might generate for Japanese text with furigana
+    const xmlWithRuby = `<worksheet xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheetData>
+    <row r="1">
+      <c r="A1" t="str">
+        <is>
+          <t>東京</t>
+          <rPh sb="0" eb="1">
+            <t>とう</t>
+          </rPh>
+          <rPh sb="1" eb="2">
+            <t>きょう</t>
+          </rPh>
+        </is>
+      </c>
+    </row>
+    <row r="2">
+      <c r="A2" t="str">
+        <is>
+          <t>日本語</t>
+        </is>
+      </c>
+    </row>
+  </sheetData>
+</worksheet>`;
+
+    const bytes = async function* () {
+      yield new TextEncoder().encode(xmlWithRuby);
+    }();
+
+    // Parse the sheet directly to test pronunciation filtering
+    const rows: any[] = [];
+    for await (const row of parseSheet(parseXmlEvents(bytes))) {
+      rows.push(row);
+    }
+
+    expect(rows).toHaveLength(2);
+    // Should return only the main text, filtering out pronunciation data
+    expect(rows[0]?.cells[0]?.value).toBe('東京'); // Main text only, no furigana
+    expect(rows[1]?.cells[0]?.value).toBe('日本語'); // Normal text unchanged
   });
 });
 

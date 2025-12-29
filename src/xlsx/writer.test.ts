@@ -268,7 +268,7 @@ describe('XLSXWriter', () => {
     expect(await Bun.file(testFile).exists()).toBe(true);
 
     // Read back and verify empty cells are preserved
-    const workbook = await readXlsx(testFile);
+    const workbook = await readXlsx(testFile, { skipEmptyRows: false });
     const sheet = workbook.sheet('Data');
     const rows: any[] = [];
     for await (const row of sheet.rows()) {

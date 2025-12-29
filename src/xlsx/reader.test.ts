@@ -291,49 +291,6 @@ describe('XLSXReader', () => {
     expect(rows[2]?.cells[0]?.value).toBe('© ® ™ € £ ¥');
   });
 
-  test('should skip pronunciation data in Japanese text', async () => {
-    // Create XML with Japanese text containing pronunciation data (ruby annotations)
-    // This simulates what Excel might generate for Japanese text with furigana
-    const xmlWithRuby = `<worksheet xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-  <sheetData>
-    <row r="1">
-      <c r="A1" t="str">
-        <is>
-          <t>東京</t>
-          <rPh sb="0" eb="1">
-            <t>とう</t>
-          </rPh>
-          <rPh sb="1" eb="2">
-            <t>きょう</t>
-          </rPh>
-        </is>
-      </c>
-    </row>
-    <row r="2">
-      <c r="A2" t="str">
-        <is>
-          <t>日本語</t>
-        </is>
-      </c>
-    </row>
-  </sheetData>
-</worksheet>`;
-
-    const bytes = async function* () {
-      yield new TextEncoder().encode(xmlWithRuby);
-    }();
-
-    // Parse the sheet directly to test pronunciation filtering
-    const rows: any[] = [];
-    for await (const row of parseSheet(parseXmlEvents(bytes))) {
-      rows.push(row);
-    }
-
-    expect(rows).toHaveLength(2);
-    // Should return only the main text, filtering out pronunciation data
-    expect(rows[0]?.cells[0]?.value).toBe('東京'); // Main text only, no furigana
-    expect(rows[1]?.cells[0]?.value).toBe('日本語'); // Normal text unchanged
-  });
 
   test('should identify hidden sheets correctly', async () => {
     // Create a file with both visible and hidden sheets
@@ -700,54 +657,6 @@ describe('XLSXReader', () => {
     expect(keywordsStart).toBeDefined();
   });
 
-  test('should handle strict OOXML files', async () => {
-    // Test that strict OOXML format (with proper namespace declarations) works correctly
-    // Strict OOXML requires all namespaces to be properly declared
-    const strictOOXML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-  <sheetData>
-    <row r="1" xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-      <c r="A1" t="inlineStr" xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-        <is xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-          <t xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">Strict OOXML</t>
-        </is>
-      </c>
-      <c r="B1" xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-        <v xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">42</v>
-      </c>
-    </row>
-    <row r="2" xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-      <c r="A2" t="s" xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-        <v xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">0</v>
-      </c>
-    </row>
-  </sheetData>
-</worksheet>`;
-
-    const bytes = async function* () {
-      yield new TextEncoder().encode(strictOOXML);
-    }();
-
-    const parsedRows: any[] = [];
-    for await (const row of parseSheet(parseXmlEvents(bytes))) {
-      parsedRows.push(row);
-    }
-
-    // Verify that strict OOXML format is parsed correctly
-    expect(parsedRows).toHaveLength(2);
-
-    // First row: inline string and number
-    expect(parsedRows[0]?.cells).toHaveLength(2);
-    expect(parsedRows[0]?.cells[0]?.value).toBe('Strict OOXML');
-    expect(parsedRows[0]?.cells[0]?.type).toBe('string');
-    expect(parsedRows[0]?.cells[1]?.value).toBe(42);
-    expect(parsedRows[0]?.cells[1]?.type).toBe('number'); // Number type is inferred
-
-    // Second row: shared string reference
-    expect(parsedRows[1]?.cells).toHaveLength(1);
-    // Note: shared string index 0 would need to be resolved, but we're testing parsing
-    expect(parsedRows[1]?.cells[0]?.type).toBe('string');
-  });
 
   test('should handle missing shared strings count metadata', async () => {
     // Test that shared strings can be parsed even when count/uniqueCount attributes are missing
@@ -862,6 +771,75 @@ describe('XLSXReader', () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]?.cells[0]?.value).toBe('Test'); // Should resolve from shared strings
     expect(rows[0]?.cells[0]?.type).toBe('string');
+  });
+
+  test('should skip empty rows by default when using readXlsx', async () => {
+    // Create a file with rows that have all empty cells (which creates empty rows)
+    await writeXlsx(testFile, {
+      sheets: [
+        {
+          name: 'Data',
+          rows: (async function* () {
+            yield row([cell('Row1')]);
+            yield row([cell(''), cell('')]); // Row with all empty cells
+            yield row([cell('Row3')]);
+            yield row([cell(''), cell(''), cell('')]); // Another row with all empty cells
+            yield row([cell('Row5')]);
+          })(),
+        },
+      ],
+    });
+
+    // Read with default options (skipEmptyRows: true)
+    const workbook = await readXlsx(testFile);
+    const sheet = workbook.sheet('Data');
+    const rows: any[] = [];
+    for await (const row of sheet.rows()) {
+      rows.push(row);
+    }
+
+    // Should skip rows with all empty cells (default behavior)
+    expect(rows).toHaveLength(3);
+    expect(rows[0]?.cells[0]?.value).toBe('Row1');
+    expect(rows[1]?.cells[0]?.value).toBe('Row3');
+    expect(rows[2]?.cells[0]?.value).toBe('Row5');
+  });
+
+  test('should include empty rows when skipEmptyRows is false with readXlsx', async () => {
+    // Create a file with rows that have all empty cells
+    await writeXlsx(testFile, {
+      sheets: [
+        {
+          name: 'Data',
+          rows: (async function* () {
+            yield row([cell('Row1')]);
+            yield row([cell(''), cell('')]); // Row with all empty cells
+            yield row([cell('Row3')]);
+            yield row([cell(''), cell(''), cell('')]); // Another row with all empty cells
+            yield row([cell('Row5')]);
+          })(),
+        },
+      ],
+    });
+
+    // Read with skipEmptyRows: false
+    const workbook = await readXlsx(testFile, { skipEmptyRows: false });
+    const sheet = workbook.sheet('Data');
+    const rows: any[] = [];
+    for await (const row of sheet.rows()) {
+      rows.push(row);
+    }
+
+    // Should include all rows, including those with all empty cells
+    expect(rows).toHaveLength(5);
+    expect(rows[0]?.cells[0]?.value).toBe('Row1');
+    expect(rows[1]?.cells[0]?.value).toBe(''); // Empty row
+    expect(rows[1]?.cells[1]?.value).toBe('');
+    expect(rows[2]?.cells[0]?.value).toBe('Row3');
+    expect(rows[3]?.cells[0]?.value).toBe(''); // Empty row
+    expect(rows[3]?.cells[1]?.value).toBe('');
+    expect(rows[3]?.cells[2]?.value).toBe('');
+    expect(rows[4]?.cells[0]?.value).toBe('Row5');
   });
 });
 

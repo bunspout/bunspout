@@ -81,7 +81,7 @@ describe('Integration Tests', () => {
       ],
     });
 
-    const workbook = await readXlsx(testFile);
+    const workbook = await readXlsx(testFile, { skipEmptyRows: false });
     const sheet = workbook.sheet('Test');
 
     const readRows: any[] = [];
@@ -212,7 +212,7 @@ describe('Integration Tests', () => {
     });
 
     // First iteration: collect all sheet data
-    const workbook1 = await readXlsx(testFile);
+    const workbook1 = await readXlsx(testFile, { skipEmptyRows: false });
     const firstIterationData: Array<{
       name: string;
       index: number;
@@ -248,7 +248,7 @@ describe('Integration Tests', () => {
     }
 
     // Second iteration: collect all sheet data again
-    const workbook2 = await readXlsx(testFile);
+    const workbook2 = await readXlsx(testFile, { skipEmptyRows: false });
     const secondIterationData: Array<{
       name: string;
       index: number;

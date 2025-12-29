@@ -4,6 +4,25 @@ import { convertExcelTimestamp } from '@utils/dates';
 import type { Cell, Row, XmlEvent } from '../types';
 
 /**
+ * Checks if a row is empty (no cells or all cells are empty strings/null)
+ */
+function isEmptyRow(row: Partial<Row> | null): boolean {
+  if (!row || !row.cells) return true;
+  if (row.cells.length === 0) return true;
+  return row.cells.every(cell => cell && (cell.value === '' || cell.value === null));
+}
+
+/**
+ * Determines if a row should be yielded based on skipEmptyRows option
+ */
+function shouldYieldRow(row: Partial<Row> | null, options?: ReadOptions): boolean {
+  if (!row) return false;
+  const isEmpty = isEmptyRow(row);
+  const shouldSkip = options?.skipEmptyRows !== false; // Default to true
+  return !isEmpty || !shouldSkip;
+}
+
+/**
  * Parses a sheet from XML events, yielding rows
  */
 export async function* parseSheet(
@@ -97,7 +116,11 @@ export async function* parseSheet(
           }
         }
         inRow = false;
-        yield currentRow as Row;
+
+        if (shouldYieldRow(currentRow, options)) {
+          yield currentRow as Row;
+        }
+
         currentRow = null;
         expectedColumnCount = null;
         explicitlySetColumns = null;
@@ -217,7 +240,7 @@ export async function* parseSheet(
   }
 
   // Yield any remaining row
-  if (currentRow && inRow) {
+  if (currentRow && inRow && shouldYieldRow(currentRow, options)) {
     yield currentRow as Row;
   }
 }
