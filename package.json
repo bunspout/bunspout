@@ -36,6 +36,7 @@
     "lint": "bun run typecheck && eslint .",
     "lint:fix": "eslint . --fix",
     "test": "bun test",
+    "test:node": "node --import tsx/esm --test src/tests/integration/read-write.node.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -75,10 +76,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "git@github.com:aphofstede/bunspout.git"
+    "url": "git@github.com:bunspout/bunspout.git"
   },
   "bugs": {
-    "url": "https://github.com/aphofstede/bunspout/issues"
+    "url": "https://github.com/bunspout/bunspout/issues"
   },
-  "homepage": "https://github.com/aphofstede/bunspout#readme"
+  "homepage": "https://github.com/bunspout/bunspout#readme"
 }
