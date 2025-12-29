@@ -85,8 +85,8 @@ function finalizeCell(
       let isDate = cell.type === 'date';
       let formatCode: string | null = null;
 
-      // If date formatting is enabled, check format code
-      if (options.shouldFormatDates && styleFormatMap && currentCellStyleIndex !== undefined) {
+      // Check format code to detect dates
+      if (styleFormatMap && currentCellStyleIndex !== undefined) {
         formatCode = getFormatCodeForStyle(currentCellStyleIndex, styleFormatMap);
         if (formatCode && isDateFormatCode(formatCode)) {
           isDate = true;
