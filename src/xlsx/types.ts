@@ -98,5 +98,12 @@ export interface ReadOptions {
    * @default false
    */
   use1904Dates?: boolean;
+  /**
+   * Skip empty rows when reading sheets.
+   * When true (default), rows with no cells or all empty cells are not yielded.
+   * When false, empty rows are returned as rows with empty string cells.
+   * @default true
+   */
+  skipEmptyRows?: boolean;
 }
 
