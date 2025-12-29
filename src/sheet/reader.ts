@@ -32,12 +32,9 @@ function shouldYieldRow(row: Partial<Row> | null, options?: ReadOptions): boolea
 
 /**
  * Finalizes a cell by applying semantic post-processing:
- * - Inline string finalization
  * - Defaulting empty cells
  * - Date detection and formatting
  * - Boolean coercion
- *
- * This is separate from parsing logic for testability and clarity.
  */
 function finalizeCell(
   cell: Partial<Cell>,
@@ -45,21 +42,13 @@ function finalizeCell(
     options?: ReadOptions;
     styleFormatMap?: StyleFormatMap;
     currentCellStyleIndex?: number;
-    inlineStringBuffer?: string;
   },
 ): Cell {
   const {
     options,
     styleFormatMap,
     currentCellStyleIndex,
-    inlineStringBuffer = '',
   } = context;
-
-  // Handle inline string finalization
-  if (cell.value === undefined && inlineStringBuffer !== undefined) {
-    cell.value = inlineStringBuffer;
-    cell.type = 'string';
-  }
 
   // Default empty cells
   if (cell.value === undefined) {
@@ -351,7 +340,6 @@ export async function* parseSheet(
           options,
           styleFormatMap,
           currentCellStyleIndex,
-          inlineStringBuffer: inInlineStr ? inlineStringBuffer : undefined,
         });
 
         // If cell has explicit column index, position it correctly; otherwise append
