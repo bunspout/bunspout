@@ -1,8 +1,29 @@
 {
   "name": "bunspout",
+  "main": "index.ts",
   "module": "index.ts",
   "type": "module",
-  "version": "0.0.1",
+  "version": "0.0.1-alpha.1",
+  "keywords": [
+    "excel",
+    "xlsx",
+    "xls",
+    "spreadsheet",
+    "read",
+    "write",
+    "streaming",
+    "bun",
+    "typescript"
+  ],
+  "files": [
+    "index.ts",
+    "src/**/*.ts",
+    "!src/**/*.test.ts",
+    "!src/**/*.bench.ts",
+    "!src/scripts/**",
+    "README.md",
+    "tsconfig.json"
+  ],
   "scripts": {
     "bench": "for file in src/tests/benchmarks/*.bench.ts; do bun --expose-gc run \"$file\"; done",
     "lint": "bun run typecheck && eslint .",
