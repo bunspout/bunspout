@@ -17,9 +17,9 @@ import type { Cell, Row, XmlEvent } from '../types';
 function isEmptyRow(row: Partial<Row> | null): boolean {
   if (!row || !row.cells) return true;
   if (row.cells.length === 0) return true;
-  // A cell is empty if it's missing (undefined/null) or has an empty string value
+  // A cell is empty if it's missing (undefined/null) or has an empty or undefined string value
   // A cell with null value is NOT empty - it represents invalid but present data
-  return row.cells.every(cell => !cell || cell.value === '');
+  return row.cells.every(cell => !cell || cell.value === '' || cell.value === undefined);
 }
 
 /**
