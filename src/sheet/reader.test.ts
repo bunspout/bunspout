@@ -602,8 +602,9 @@ describe('Row Parser', () => {
   });
 
   test('should format dates when shouldFormatDates is true (1904 system)', async () => {
-    // Excel date 42382 with 1904 system = January 14, 2016 (one day later due to different base)
-    // Note: 42382 in 1904 system = 42382 days from Jan 1, 1904
+    // Excel date 42382 with 1904 system = January 14, 2020 (about 4 years later than 1900 system)
+    // Note: 1904 calendar base (Jan 1, 1904) is 1462 days later than 1900 base (Dec 31, 1899)
+    // This results in dates being approximately 4 years later in the 1904 system
     const xml = '<row><c t="d" s="1"><v>42382</v></c></row>';
     const bytes = async function* () {
       yield new TextEncoder().encode(xml);
