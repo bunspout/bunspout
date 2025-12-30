@@ -1,0 +1,98 @@
+name: CI & Publish
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  release:
+    types: [created]
+
+jobs:
+  lint-test-bun:
+    name: Lint & Test (Bun)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Test
+        run: bun test
+
+  test-node:
+    name: Test (Node 20)
+    runs-on: ubuntu-latest
+    needs: lint-test-bun
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install TypeScript and tsx
+        run: npm install --save-dev typescript tsx
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Run Node.js integration tests
+        run: npm run test:node
+
+      - name: Verify package can be imported
+        run: |
+          npx tsx -e "import { readXlsx, writeXlsx } from './index.ts'; console.log('Import successful')"
+
+  publish:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    needs: [lint-test-bun, test-node]
+    if: github.event_name == 'release'
+
+    # Trusted Publishing: id-token: write is required for OIDC authentication
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          # registry-url enables OIDC authentication for Trusted Publishing
+          registry-url: https://registry.npmjs.org/
+
+      - name: Check version matches tag
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          if [ "v$PKG_VERSION" != "$TAG" ]; then
+            echo "Version mismatch: package.json=$PKG_VERSION tag=$TAG"
+            exit 1
+          fi
+
+      - name: Ensure latest npm
+        run: npm install -g npm@latest
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Publish to npm
+        run: npm publish --provenance --access public

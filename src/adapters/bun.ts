@@ -62,3 +62,22 @@ export async function* readableStreamToBytes(
     reader.releaseLock();
   }
 }
+
+/**
+ * Writes a buffer to a file (Bun implementation)
+ */
+export async function writeFile(filePath: string, buffer: Uint8Array | Buffer): Promise<void> {
+  await Bun.write(filePath, buffer);
+}
+
+/**
+ * Reads a file to a Buffer (Bun implementation)
+ */
+export async function readFile(filePath: string): Promise<Buffer> {
+  const file = Bun.file(filePath);
+  if (!(await file.exists())) {
+    throw new Error(`File not found: ${filePath}`);
+  }
+  const arrayBuffer = await file.arrayBuffer();
+  return Buffer.from(arrayBuffer);
+}
