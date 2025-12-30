@@ -905,4 +905,267 @@ describe('XLSXReader', () => {
     expect(rows[1]?.cells[1]?.formula).toBe('AVERAGE(A1:A2)');
     expect(rows[1]?.cells[1]?.computedValue).toBe(7.5);
   });
+
+  test('should detect 1904 date system from workbook.xml date1904="1"', async () => {
+    const { createZipWriter, writeZipEntry, endZipWriter } = await import('@zip/writer');
+    const { generateContentTypes, generateRels, generateWorkbookRels } = await import('./structure');
+
+    const zip = createZipWriter();
+    const stringToBytes = async function* (str: string) {
+      yield new TextEncoder().encode(str);
+    };
+
+    // Create workbook.xml with date1904="1"
+    const workbookXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <workbookPr date1904="1"/>
+  <sheets>
+    <sheet name="Sheet1" sheetId="1" r:id="rId1"/>
+  </sheets>
+</workbook>`;
+
+    const sheetXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <sheetData>
+    <row r="1">
+      <c t="d"><v>1</v></c>
+    </row>
+  </sheetData>
+</worksheet>`;
+
+    await writeZipEntry(zip, '[Content_Types].xml', stringToBytes(generateContentTypes([{ id: 1 }])));
+    await writeZipEntry(zip, '_rels/.rels', stringToBytes(generateRels()));
+    await writeZipEntry(zip, 'xl/workbook.xml', stringToBytes(workbookXml));
+    await writeZipEntry(zip, 'xl/_rels/workbook.xml.rels', stringToBytes(generateWorkbookRels([{ id: 1 }])));
+    await writeZipEntry(zip, 'xl/worksheets/sheet1.xml', stringToBytes(sheetXml));
+
+    const buffer = await endZipWriter(zip);
+    await Bun.write(testFile, buffer);
+
+    // Read without explicit use1904Dates option - should auto-detect
+    const workbook = await readXlsx(testFile);
+    const sheet = workbook.sheet('Sheet1');
+
+    const rows: any[] = [];
+    for await (const row of sheet.rows()) {
+      rows.push(row);
+    }
+
+    expect(rows).toHaveLength(1);
+    const dateCell = rows[0]?.cells[0];
+    expect(dateCell?.type).toBe('date');
+    expect(dateCell?.value).toBeInstanceOf(Date);
+    // Excel date 1 with 1904 calendar = January 2, 1904
+    expect((dateCell?.value as Date)?.getFullYear()).toBe(1904);
+    expect((dateCell?.value as Date)?.getMonth()).toBe(0); // January
+    expect((dateCell?.value as Date)?.getDate()).toBe(2);
+  });
+
+  test('should detect 1900 date system from workbook.xml date1904="0"', async () => {
+    const { createZipWriter, writeZipEntry, endZipWriter } = await import('@zip/writer');
+    const { generateContentTypes, generateRels, generateWorkbookRels } = await import('./structure');
+
+    const zip = createZipWriter();
+    const stringToBytes = async function* (str: string) {
+      yield new TextEncoder().encode(str);
+    };
+
+    // Create workbook.xml with date1904="0"
+    const workbookXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <workbookPr date1904="0"/>
+  <sheets>
+    <sheet name="Sheet1" sheetId="1" r:id="rId1"/>
+  </sheets>
+</workbook>`;
+
+    const sheetXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <sheetData>
+    <row r="1">
+      <c t="d"><v>1</v></c>
+    </row>
+  </sheetData>
+</worksheet>`;
+
+    await writeZipEntry(zip, '[Content_Types].xml', stringToBytes(generateContentTypes([{ id: 1 }])));
+    await writeZipEntry(zip, '_rels/.rels', stringToBytes(generateRels()));
+    await writeZipEntry(zip, 'xl/workbook.xml', stringToBytes(workbookXml));
+    await writeZipEntry(zip, 'xl/_rels/workbook.xml.rels', stringToBytes(generateWorkbookRels([{ id: 1 }])));
+    await writeZipEntry(zip, 'xl/worksheets/sheet1.xml', stringToBytes(sheetXml));
+
+    const buffer = await endZipWriter(zip);
+    await Bun.write(testFile, buffer);
+
+    // Read without explicit use1904Dates option - should auto-detect
+    const workbook = await readXlsx(testFile);
+    const sheet = workbook.sheet('Sheet1');
+
+    const rows: any[] = [];
+    for await (const row of sheet.rows()) {
+      rows.push(row);
+    }
+
+    expect(rows).toHaveLength(1);
+    const dateCell = rows[0]?.cells[0];
+    expect(dateCell?.type).toBe('date');
+    expect(dateCell?.value).toBeInstanceOf(Date);
+    // Excel date 1 with 1900 calendar = January 1, 1900
+    expect((dateCell?.value as Date)?.getFullYear()).toBe(1900);
+    expect((dateCell?.value as Date)?.getMonth()).toBe(0); // January
+    expect((dateCell?.value as Date)?.getDate()).toBe(1);
+  });
+
+  test('should handle string boolean values in date1904 attribute', async () => {
+    const { createZipWriter, writeZipEntry, endZipWriter } = await import('@zip/writer');
+    const { generateContentTypes, generateRels, generateWorkbookRels } = await import('./structure');
+
+    const zip = createZipWriter();
+    const stringToBytes = async function* (str: string) {
+      yield new TextEncoder().encode(str);
+    };
+
+    // Create workbook.xml with date1904="true" (string)
+    const workbookXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <workbookPr date1904="true"/>
+  <sheets>
+    <sheet name="Sheet1" sheetId="1" r:id="rId1"/>
+  </sheets>
+</workbook>`;
+
+    const sheetXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <sheetData>
+    <row r="1">
+      <c t="d"><v>1</v></c>
+    </row>
+  </sheetData>
+</worksheet>`;
+
+    await writeZipEntry(zip, '[Content_Types].xml', stringToBytes(generateContentTypes([{ id: 1 }])));
+    await writeZipEntry(zip, '_rels/.rels', stringToBytes(generateRels()));
+    await writeZipEntry(zip, 'xl/workbook.xml', stringToBytes(workbookXml));
+    await writeZipEntry(zip, 'xl/_rels/workbook.xml.rels', stringToBytes(generateWorkbookRels([{ id: 1 }])));
+    await writeZipEntry(zip, 'xl/worksheets/sheet1.xml', stringToBytes(sheetXml));
+
+    const buffer = await endZipWriter(zip);
+    await Bun.write(testFile, buffer);
+
+    // Read without explicit use1904Dates option - should auto-detect from string "true"
+    const workbook = await readXlsx(testFile);
+    const sheet = workbook.sheet('Sheet1');
+
+    const rows: any[] = [];
+    for await (const row of sheet.rows()) {
+      rows.push(row);
+    }
+
+    expect(rows).toHaveLength(1);
+    const dateCell = rows[0]?.cells[0];
+    expect(dateCell?.type).toBe('date');
+    expect(dateCell?.value).toBeInstanceOf(Date);
+    // Excel date 1 with 1904 calendar = January 2, 1904
+    expect((dateCell?.value as Date)?.getFullYear()).toBe(1904);
+  });
+
+  test('should allow user option to override detected date system', async () => {
+    const { createZipWriter, writeZipEntry, endZipWriter } = await import('@zip/writer');
+    const { generateContentTypes, generateRels, generateWorkbookRels } = await import('./structure');
+
+    const zip = createZipWriter();
+    const stringToBytes = async function* (str: string) {
+      yield new TextEncoder().encode(str);
+    };
+
+    // Create workbook.xml with date1904="1" (1904 system)
+    const workbookXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <workbookPr date1904="1"/>
+  <sheets>
+    <sheet name="Sheet1" sheetId="1" r:id="rId1"/>
+  </sheets>
+</workbook>`;
+
+    const sheetXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <sheetData>
+    <row r="1">
+      <c t="d"><v>1</v></c>
+    </row>
+  </sheetData>
+</worksheet>`;
+
+    await writeZipEntry(zip, '[Content_Types].xml', stringToBytes(generateContentTypes([{ id: 1 }])));
+    await writeZipEntry(zip, '_rels/.rels', stringToBytes(generateRels()));
+    await writeZipEntry(zip, 'xl/workbook.xml', stringToBytes(workbookXml));
+    await writeZipEntry(zip, 'xl/_rels/workbook.xml.rels', stringToBytes(generateWorkbookRels([{ id: 1 }])));
+    await writeZipEntry(zip, 'xl/worksheets/sheet1.xml', stringToBytes(sheetXml));
+
+    const buffer = await endZipWriter(zip);
+    await Bun.write(testFile, buffer);
+
+    // Read with explicit use1904Dates: false - should override detected 1904 system
+    const workbook = await readXlsx(testFile, { use1904Dates: false });
+    const sheet = workbook.sheet('Sheet1');
+
+    const rows: any[] = [];
+    for await (const row of sheet.rows()) {
+      rows.push(row);
+    }
+
+    expect(rows).toHaveLength(1);
+    const dateCell = rows[0]?.cells[0];
+    expect(dateCell?.type).toBe('date');
+    expect(dateCell?.value).toBeInstanceOf(Date);
+    // Should use 1900 system despite file saying 1904 (user override)
+    expect((dateCell?.value as Date)?.getFullYear()).toBe(1900);
+    expect((dateCell?.value as Date)?.getDate()).toBe(1);
+  });
+
+  test('should default to 1900 system when date1904 attribute is missing', async () => {
+    const { createZipWriter, writeZipEntry, endZipWriter } = await import('@zip/writer');
+    const { generateContentTypes, generateRels, generateWorkbook, generateWorkbookRels } = await import('./structure');
+
+    const zip = createZipWriter();
+    const stringToBytes = async function* (str: string) {
+      yield new TextEncoder().encode(str);
+    };
+
+    const sheetXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <sheetData>
+    <row r="1">
+      <c t="d"><v>1</v></c>
+    </row>
+  </sheetData>
+</worksheet>`;
+
+    await writeZipEntry(zip, '[Content_Types].xml', stringToBytes(generateContentTypes([{ id: 1 }])));
+    await writeZipEntry(zip, '_rels/.rels', stringToBytes(generateRels()));
+    // Use generateWorkbook which doesn't include date1904 attribute
+    await writeZipEntry(zip, 'xl/workbook.xml', stringToBytes(generateWorkbook([{ name: 'Sheet1', id: 1 }])));
+    await writeZipEntry(zip, 'xl/_rels/workbook.xml.rels', stringToBytes(generateWorkbookRels([{ id: 1 }])));
+    await writeZipEntry(zip, 'xl/worksheets/sheet1.xml', stringToBytes(sheetXml));
+
+    const buffer = await endZipWriter(zip);
+    await Bun.write(testFile, buffer);
+
+    // Read without explicit use1904Dates option - should default to 1900
+    const workbook = await readXlsx(testFile);
+    const sheet = workbook.sheet('Sheet1');
+
+    const rows: any[] = [];
+    for await (const row of sheet.rows()) {
+      rows.push(row);
+    }
+
+    expect(rows).toHaveLength(1);
+    const dateCell = rows[0]?.cells[0];
+    expect(dateCell?.type).toBe('date');
+    expect(dateCell?.value).toBeInstanceOf(Date);
+    // Should default to 1900 system
+    expect((dateCell?.value as Date)?.getFullYear()).toBe(1900);
+    expect((dateCell?.value as Date)?.getDate()).toBe(1);
+  });
 });

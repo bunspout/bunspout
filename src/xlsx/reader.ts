@@ -1,4 +1,5 @@
 import type * as yauzl from 'yauzl';
+import { parseBooleanAttribute } from '@utils/xml';
 import { openZip, readZipEntry, type ZipEntry } from '@zip/reader';
 import { parseXmlEvents } from '@xml/parser';
 import { parseSheetProperties, type SheetProperties } from './sheet-properties-reader';
@@ -6,12 +7,20 @@ import type { ReadOptions } from './types';
 import { Workbook, type SheetInfo } from './workbook';
 
 /**
- * Parses workbook.xml to extract sheet information
+ * Result of parsing workbook.xml
+ */
+type WorkbookParseResult = {
+  sheets: SheetInfo[];
+  use1904Dates: boolean | undefined;
+};
+
+/**
+ * Parses workbook.xml to extract sheet information and date system
  */
 async function parseWorkbook(
   zipFile: yauzl.ZipFile,
   entries: ZipEntry[],
-): Promise<SheetInfo[]> {
+): Promise<WorkbookParseResult> {
   // Find workbook.xml entry
   const workbookEntry = entries.find((e) => e.fileName === 'xl/workbook.xml');
   if (!workbookEntry) {
@@ -21,16 +30,23 @@ async function parseWorkbook(
   // Stream XML directly from ZIP to parser (no accumulation)
   const sheets: SheetInfo[] = [];
   let currentSheet: { name?: string; id?: string; rId?: string; hidden?: boolean } | null = null;
+  let use1904Dates: boolean | undefined = undefined;
 
   for await (const event of parseXmlEvents(readZipEntry(workbookEntry, zipFile))) {
-    if (event.type === 'startElement' && event.name === 'sheet') {
-      const state = event.attributes?.state;
-      currentSheet = {
-        name: event.attributes?.name,
-        id: event.attributes?.sheetId,
-        rId: event.attributes?.['r:id'],
-        hidden: state === 'hidden',
-      };
+    if (event.type === 'startElement') {
+      if (event.name === 'sheet') {
+        const state = event.attributes?.state;
+        currentSheet = {
+          name: event.attributes?.name,
+          id: event.attributes?.sheetId,
+          rId: event.attributes?.['r:id'],
+          hidden: state === 'hidden',
+        };
+      } else if (event.name === 'workbookPr') {
+        // Extract date1904 attribute from workbookPr element
+        const date1904Value = event.attributes?.date1904;
+        use1904Dates = parseBooleanAttribute(date1904Value);
+      }
     } else if (event.type === 'endElement' && event.name === 'sheet' && currentSheet) {
       if (currentSheet.name && currentSheet.id) {
         // Find the corresponding worksheet entry
@@ -67,7 +83,7 @@ async function parseWorkbook(
     }
   }
 
-  return sheets;
+  return { sheets, use1904Dates };
 }
 
 /**
@@ -84,11 +100,24 @@ export async function readXlsx(filePath: string, options?: ReadOptions): Promise
   // Open ZIP
   const zipFile = await openZip(buffer);
 
-  // Parse workbook.xml to get sheet names and relationships
-  const sheetInfos = await parseWorkbook(zipFile.zipFile, zipFile.entries);
+  // Parse workbook.xml to get sheet names, relationships, and date system
+  const { sheets: sheetInfos, use1904Dates: detectedUse1904Dates } = await parseWorkbook(
+    zipFile.zipFile,
+    zipFile.entries,
+  );
+
+  // Merge detected date system with user options (user option takes precedence)
+  // Create immutable options object
+  const mergedOptions: ReadOptions = {
+    ...options,
+    // Only use detected value if user didn't explicitly provide one
+    use1904Dates: options?.use1904Dates !== undefined
+      ? options.use1904Dates
+      : detectedUse1904Dates,
+  };
 
   // Create Workbook instance
-  const workbook = new Workbook(zipFile, sheetInfos, options);
+  const workbook = new Workbook(zipFile, sheetInfos, mergedOptions);
 
   // Load properties asynchronously (lazy loading)
   // Properties will be loaded when accessed via workbook.properties

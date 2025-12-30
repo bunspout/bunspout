@@ -46,6 +46,10 @@ describe('Integration Tests (Node.js)', () => {
     if (await fileExists('date-test-node.xlsx')) {
       await unlink('date-test-node.xlsx');
     }
+    // Clean up date-test-1904-node.xlsx if it exists
+    if (await fileExists('date-test-1904-node.xlsx')) {
+      await unlink('date-test-1904-node.xlsx');
+    }
   });
 
   test('should write rows → ZIP → read back → verify rows match', async () => {
@@ -163,6 +167,43 @@ describe('Integration Tests (Node.js)', () => {
     expect.toBe((dateCell?.value as Date)?.getFullYear(), 2024);
     expect.toBe((dateCell?.value as Date)?.getMonth(), 0); // January
     expect.toBe((dateCell?.value as Date)?.getDate(), 15);
+  });
+
+  test('should parse date cells with 1904 date system (use1904Dates: true)', async () => {
+    const dateTestFile = 'date-test-1904-node.xlsx';
+
+    // Write a file with date cells (this will be written as numbers with date type)
+    await writeXlsx(dateTestFile, {
+      sheets: [
+        {
+          name: 'Dates',
+          rows: (async function* () {
+            yield row([cell('Date'), cell('Value')]);
+            yield row([cell(new Date('2024-01-15')), cell(42)]);
+          })(),
+        },
+      ],
+    });
+
+    // Read back using the 1904 date system (use1904Dates: true)
+    const workbook = await readXlsx(dateTestFile, { use1904Dates: true });
+    const sheet = workbook.sheet('Dates');
+
+    const readRows: any[] = [];
+    for await (const row of sheet.rows()) {
+      readRows.push(row);
+    }
+
+    expect.toHaveLength(readRows, 2);
+
+    // Check that the date cell has the parsed Date directly in value
+    // Note: The date will be interpreted differently with 1904 system
+    const dateCell = readRows[1]?.cells[0];
+    expect.toBe(dateCell?.type, 'date');
+    expect.toBeInstanceOf(dateCell?.value, Date);
+    // With 1904 system, the same Excel serial number represents a different date
+    // We verify it's a valid date object
+    expect.toBe((dateCell?.value as Date)?.getTime() > 0, true);
   });
 
   test('should handle streaming behavior with large dataset', async () => {

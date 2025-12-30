@@ -511,7 +511,7 @@ describe('Row Parser', () => {
     expect(rows[0]?.cells[2]?.type).toBe('string');
   });
 
-  test('should parse date cells with conversion', async () => {
+  test('should parse date cells with conversion (1900 system)', async () => {
     // Excel date 1 = January 1, 1900
     const xml = '<row><c t="d"><v>1</v></c></row>';
     const bytes = async function* () {
@@ -532,8 +532,50 @@ describe('Row Parser', () => {
     expect((dateCell?.value as Date)?.getDate()).toBe(1);
   });
 
-  test('should format dates when shouldFormatDates is true', async () => {
-    // Excel date 42382 = January 13, 2016
+  test('should parse date cells with conversion (1904 system)', async () => {
+    // Excel date 1 with 1904 calendar = January 2, 1904
+    const xml = '<row><c t="d"><v>1</v></c></row>';
+    const bytes = async function* () {
+      yield new TextEncoder().encode(xml);
+    }();
+
+    const rows: Row[] = [];
+    for await (const row of parseSheet(parseXmlEvents(bytes), undefined, { use1904Dates: true })) {
+      rows.push(row);
+    }
+
+    expect(rows).toHaveLength(1);
+    const dateCell = rows[0]?.cells[0];
+    expect(dateCell?.type).toBe('date');
+    expect(dateCell?.value).toBeInstanceOf(Date);
+    expect((dateCell?.value as Date)?.getFullYear()).toBe(1904);
+    expect((dateCell?.value as Date)?.getMonth()).toBe(0); // January
+    expect((dateCell?.value as Date)?.getDate()).toBe(2);
+  });
+
+  test('should parse date 0 with 1904 system (January 1, 1904)', async () => {
+    // Excel date 0 with 1904 calendar = January 1, 1904
+    const xml = '<row><c t="d"><v>0</v></c></row>';
+    const bytes = async function* () {
+      yield new TextEncoder().encode(xml);
+    }();
+
+    const rows: Row[] = [];
+    for await (const row of parseSheet(parseXmlEvents(bytes), undefined, { use1904Dates: true })) {
+      rows.push(row);
+    }
+
+    expect(rows).toHaveLength(1);
+    const dateCell = rows[0]?.cells[0];
+    expect(dateCell?.type).toBe('date');
+    expect(dateCell?.value).toBeInstanceOf(Date);
+    expect((dateCell?.value as Date)?.getFullYear()).toBe(1904);
+    expect((dateCell?.value as Date)?.getMonth()).toBe(0); // January
+    expect((dateCell?.value as Date)?.getDate()).toBe(1);
+  });
+
+  test('should format dates when shouldFormatDates is true (1900 system)', async () => {
+    // Excel date 42382 = January 13, 2016 (1900 system)
     const xml = '<row><c t="d" s="1"><v>42382</v></c></row>';
     const bytes = async function* () {
       yield new TextEncoder().encode(xml);
@@ -557,6 +599,37 @@ describe('Row Parser', () => {
     const dateCell = rows[0]?.cells[0];
     expect(dateCell?.type).toBe('date');
     expect(dateCell?.value).toBe('01/13/2016');
+  });
+
+  test('should format dates when shouldFormatDates is true (1904 system)', async () => {
+    // Excel date 42382 with 1904 system = January 14, 2016 (one day later due to different base)
+    // Note: 42382 in 1904 system = 42382 days from Jan 1, 1904
+    const xml = '<row><c t="d" s="1"><v>42382</v></c></row>';
+    const bytes = async function* () {
+      yield new TextEncoder().encode(xml);
+    }();
+
+    // Create a style format map with format code MM/DD/YYYY
+    const styleFormatMap = new Map<number, string>();
+    styleFormatMap.set(1, 'MM/DD/YYYY');
+
+    const rows: Row[] = [];
+    for await (const row of parseSheet(
+      parseXmlEvents(bytes),
+      undefined,
+      { use1904Dates: true, shouldFormatDates: true },
+      styleFormatMap,
+    )) {
+      rows.push(row);
+    }
+
+    expect(rows).toHaveLength(1);
+    const dateCell = rows[0]?.cells[0];
+    expect(dateCell?.type).toBe('date');
+    // Should be formatted as a date string
+    expect(typeof dateCell?.value).toBe('string');
+    // The exact date will be different due to 1904 system
+    expect((dateCell?.value as string)).toMatch(/\d{2}\/\d{2}\/\d{4}/);
   });
 
   test('should return Date objects when shouldFormatDates is false', async () => {

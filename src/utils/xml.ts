@@ -26,3 +26,24 @@ export function escapeXml(text: string): string {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&apos;');
 }
+
+/**
+ * Converts a string or boolean value to a boolean, handling Excel's string representations
+ * Excel may write "true", "false", "1", "0" as strings in XML attributes
+ */
+export function parseBooleanAttribute(value: string | boolean | undefined): boolean | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (typeof value === 'boolean') {
+    return value;
+  }
+  const str = String(value).toLowerCase().trim();
+  if (str === 'true' || str === '1') {
+    return true;
+  }
+  if (str === 'false' || str === '0') {
+    return false;
+  }
+  return undefined;
+}

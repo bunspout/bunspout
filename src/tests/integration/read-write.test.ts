@@ -16,6 +16,10 @@ describe('Integration Tests', () => {
     if (await Bun.file('date-test.xlsx').exists()) {
       await import('fs').then((fs) => fs.promises.unlink('date-test.xlsx'));
     }
+    // Clean up date-test-1904.xlsx if it exists
+    if (await Bun.file('date-test-1904.xlsx').exists()) {
+      await import('fs').then((fs) => fs.promises.unlink('date-test-1904.xlsx'));
+    }
   });
 
   test('should write rows → ZIP → read back → verify rows match', async () => {
@@ -131,6 +135,43 @@ describe('Integration Tests', () => {
     expect((dateCell?.value as Date)?.getFullYear()).toBe(2024);
     expect((dateCell?.value as Date)?.getMonth()).toBe(0); // January
     expect((dateCell?.value as Date)?.getDate()).toBe(15);
+  });
+
+  test('should parse date cells with 1904 date system (use1904Dates: true)', async () => {
+    const testFile = 'date-test-1904.xlsx';
+
+    // Write a file with date cells (this will be written as numbers with date type)
+    await writeXlsx(testFile, {
+      sheets: [
+        {
+          name: 'Dates',
+          rows: (async function* () {
+            yield row([cell('Date'), cell('Value')]);
+            yield row([cell(new Date('2024-01-15')), cell(42)]);
+          })(),
+        },
+      ],
+    });
+
+    // Read back using the 1904 date system (use1904Dates: true)
+    const workbook = await readXlsx(testFile, { use1904Dates: true });
+    const sheet = workbook.sheet('Dates');
+
+    const readRows: any[] = [];
+    for await (const row of sheet.rows()) {
+      readRows.push(row);
+    }
+
+    expect(readRows).toHaveLength(2);
+
+    // Check that the date cell has the parsed Date directly in value
+    // Note: The date will be interpreted differently with 1904 system
+    const dateCell = readRows[1]?.cells[0];
+    expect(dateCell?.type).toBe('date');
+    expect(dateCell?.value).toBeInstanceOf(Date);
+    // With 1904 system, the same Excel serial number represents a different date
+    // We verify it's a valid date object
+    expect((dateCell?.value as Date)?.getTime()).toBeGreaterThan(0);
   });
 
   test('should handle streaming behavior with large dataset', async () => {
