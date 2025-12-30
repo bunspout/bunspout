@@ -422,4 +422,3 @@ export async function* writeSheetXml(
 
   yield '</sheetData></worksheet>';
 }
-

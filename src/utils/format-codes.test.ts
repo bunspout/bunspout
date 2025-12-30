@@ -117,4 +117,3 @@ describe('Format Code Utilities', () => {
     });
   });
 });
-

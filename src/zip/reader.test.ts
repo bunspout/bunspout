@@ -107,4 +107,3 @@ describe('ZIP Reader', () => {
     }
   });
 });
-

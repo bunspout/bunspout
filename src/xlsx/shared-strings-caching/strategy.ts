@@ -22,4 +22,3 @@ export interface SharedStringsCachingStrategy {
    */
   cleanup(): Promise<void>;
 }
-

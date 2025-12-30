@@ -206,4 +206,3 @@ export function generateCustomProperties(customProperties: Record<string, string
 ${properties.join('\n')}
 </Properties>`;
 }
-

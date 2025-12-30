@@ -58,4 +58,3 @@ export function parseCellReference(cellRef: string): { rowIndex: number; colInde
     colIndex: columnLetterToIndex(colLetter),
   };
 }
-

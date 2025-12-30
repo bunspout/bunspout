@@ -117,4 +117,3 @@ export function getFormatCodeForStyle(
   // This happens when the style index doesn't have an associated format code
   return null;
 }
-

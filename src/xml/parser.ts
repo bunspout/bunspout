@@ -118,4 +118,3 @@ export async function* parseXmlEvents(
   // Wait for consumption to complete
   await consumePromise;
 }
-

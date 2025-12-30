@@ -44,4 +44,3 @@ export class InMemoryStrategy implements SharedStringsCachingStrategy {
     this.count = 0;
   }
 }
-

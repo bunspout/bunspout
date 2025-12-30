@@ -35,4 +35,3 @@ export function getMemoryLimitInKB(): number {
   const CONSERVATIVE_HEAP_LIMIT_KB = 512 * 1024; // 512 MB
   return CONSERVATIVE_HEAP_LIMIT_KB;
 }
-

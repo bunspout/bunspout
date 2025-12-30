@@ -216,4 +216,3 @@ describe('XML Writer', () => {
     });
   });
 });
-

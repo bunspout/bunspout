@@ -58,4 +58,3 @@ describe('ZIP Writer', () => {
     expect(result.length).toBeGreaterThan(0);
   });
 });
-

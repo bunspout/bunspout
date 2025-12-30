@@ -93,4 +93,3 @@ describe('Row Writer Integration', () => {
     expect(result).toContain('<row r="1" spans="1:1"></row>');
   });
 });
-

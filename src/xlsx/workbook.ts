@@ -267,4 +267,3 @@ export class Sheet {
     return this._properties?.hidden ?? false;
   }
 }
-

@@ -53,4 +53,3 @@ export async function collect<T>(iterable: AsyncIterable<T>): Promise<T[]> {
   }
   return result;
 }
-

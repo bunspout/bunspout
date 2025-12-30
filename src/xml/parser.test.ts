@@ -115,4 +115,3 @@ describe('XML Parser', () => {
     expect(textEvent?.text).toBe('Test');
   });
 });
-

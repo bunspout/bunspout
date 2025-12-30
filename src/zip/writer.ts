@@ -50,4 +50,3 @@ export function endZipWriter(zipFile: yazl.ZipFile): Promise<Buffer> {
     zipFile.end();
   });
 }
-

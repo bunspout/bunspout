@@ -6,7 +6,6 @@ import { writeXlsx } from '@xlsx/writer';
 import { cell } from '@sheet/cell';
 import { row } from '@sheet/row';
 
-
 const BENCHMARK_FILE = 'benchmark-inline-strings.xlsx';
 const ROW_COUNT = 250_000;
 

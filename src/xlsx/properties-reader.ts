@@ -104,4 +104,3 @@ export async function parseCustomProperties(
 
   return customProperties;
 }
-

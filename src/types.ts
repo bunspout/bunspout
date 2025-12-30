@@ -43,4 +43,3 @@ export type XmlEvent = {
 };
 
 export type XmlNodeChunk = string | Uint8Array;
-

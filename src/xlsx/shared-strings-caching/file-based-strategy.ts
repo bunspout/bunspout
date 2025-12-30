@@ -143,4 +143,3 @@ export class FileBasedStrategy implements SharedStringsCachingStrategy {
     return join(this.tempDir, `shared-strings-${fileIndex}.json`);
   }
 }
-

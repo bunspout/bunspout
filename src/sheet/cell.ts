@@ -75,4 +75,3 @@ export function cellFromBoolean(value: boolean): Cell {
 export function cellFromNull(): Cell {
   return { value: '', type: undefined };
 }
-

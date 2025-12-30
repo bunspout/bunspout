@@ -113,4 +113,3 @@ export interface ReadOptions {
    */
   shouldFormatDates?: boolean;
 }
-

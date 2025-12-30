@@ -218,4 +218,3 @@ describe('Sheet Visibility', () => {
     });
   });
 });
-

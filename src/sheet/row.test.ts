@@ -26,4 +26,3 @@ describe('Row Factory Function', () => {
     expect(result.cells).toHaveLength(0);
   });
 });
-

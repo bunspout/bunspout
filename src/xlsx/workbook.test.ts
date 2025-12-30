@@ -213,4 +213,3 @@ describe('Workbook and Sheet Classes', () => {
     expect(hasDefaultWidth || sheet.defaultColumnWidth === 15).toBe(true);
   });
 });
-

@@ -291,7 +291,6 @@ describe('XLSXReader', () => {
     expect(rows[2]?.cells[0]?.value).toBe('© ® ™ € £ ¥');
   });
 
-
   test('should identify hidden sheets correctly', async () => {
     // Create a file with both visible and hidden sheets
     await writeXlsx(testFile, {
@@ -657,7 +656,6 @@ describe('XLSXReader', () => {
     expect(keywordsStart).toBeDefined();
   });
 
-
   test('should handle missing shared strings count metadata', async () => {
     // Test that shared strings can be parsed even when count/uniqueCount attributes are missing
     // This simulates files with incomplete metadata
@@ -908,4 +906,3 @@ describe('XLSXReader', () => {
     expect(rows[1]?.cells[1]?.computedValue).toBe(7.5);
   });
 });
-

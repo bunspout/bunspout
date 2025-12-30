@@ -8,7 +8,6 @@ import type { WorkbookDefinition, WriterOptions } from './types';
 import { stringToBytes } from '../adapters/common';
 import type { Row } from '../types';
 
-
 /**
  * Builds shared strings table from all rows
  */
@@ -176,4 +175,3 @@ export async function writeXlsx(
   const buffer = await endZipWriter(zipWriter);
   await Bun.write(filePath, buffer);
 }
-

@@ -34,4 +34,3 @@ export function resolveCell(cell: Cell): CellResolved {
   // Fallback
   return { t: 's', v: String(cell.value) };
 }
-

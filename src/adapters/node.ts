@@ -51,4 +51,3 @@ export async function writeRowsToFile(
   const writeStream = createWriteStream(filePath);
   await pipeline(stream, writeStream);
 }
-

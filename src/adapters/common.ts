@@ -57,4 +57,3 @@ export async function* uint8ArrayToBytes(
 ): AsyncIterable<Uint8Array> {
   yield data;
 }
-

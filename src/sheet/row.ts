@@ -16,4 +16,3 @@ export function row(cells: Cell[], options?: RowOptions): Row {
     height: options?.height,
   };
 }
-

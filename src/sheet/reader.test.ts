@@ -1021,4 +1021,3 @@ describe('Row Parser', () => {
     expect(rows[1]?.cells[0]?.value).toBe('日本語'); // Normal text unchanged
   });
 });
-

@@ -73,4 +73,3 @@ export async function* readZipEntry(
 
   yield* nodeStreamToBytes(stream);
 }
-

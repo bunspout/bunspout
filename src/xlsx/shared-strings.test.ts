@@ -73,4 +73,3 @@ describe('SharedStringsTable', () => {
     expect(xml).toContain('<si><t></t></si>');
   });
 });
-

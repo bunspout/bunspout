@@ -195,4 +195,3 @@ describe('CachingStrategyFactory', () => {
     expect(MAX_NUM_STRINGS_PER_TEMP_FILE).toBe(10000);
   });
 });
-
