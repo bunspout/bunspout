@@ -4,6 +4,7 @@ import { parseXmlEvents } from '@xml/parser';
 import { parseSheetProperties, type SheetProperties } from './sheet-properties-reader';
 import type { ReadOptions } from './types';
 import { Workbook, type SheetInfo } from './workbook';
+import { readFile } from '../adapters';
 
 /**
  * Parses workbook.xml to extract sheet information
@@ -75,11 +76,7 @@ async function parseWorkbook(
  */
 export async function readXlsx(filePath: string, options?: ReadOptions): Promise<Workbook> {
   // Read file to buffer
-  const file = Bun.file(filePath);
-  if (!(await file.exists())) {
-    throw new Error(`File not found: ${filePath}`);
-  }
-  const buffer = Buffer.from(await file.arrayBuffer());
+  const buffer = await readFile(filePath);
 
   // Open ZIP
   const zipFile = await openZip(buffer);

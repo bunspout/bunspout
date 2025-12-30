@@ -5,6 +5,7 @@ import { writeSheetXml } from '@xml/writer';
 import { SharedStringsTable } from './shared-strings';
 import { generateContentTypes, generateRels, generateWorkbook, generateWorkbookRels, generateCoreProperties, generateCustomProperties } from './structure';
 import type { WorkbookDefinition, WriterOptions } from './types';
+import { writeFile } from '../adapters';
 import { stringToBytes } from '../adapters/common';
 import type { Row } from '../types';
 
@@ -173,5 +174,5 @@ export async function writeXlsx(
 
   // Write ZIP to file
   const buffer = await endZipWriter(zipWriter);
-  await Bun.write(filePath, buffer);
+  await writeFile(filePath, buffer);
 }

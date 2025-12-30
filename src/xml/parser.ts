@@ -1,5 +1,9 @@
-import * as sax from 'sax';
+import type * as SaxTypes from 'sax';
 import type { XmlEvent } from '../types';
+// Import sax module - handle CommonJS in ESM using createRequire
+const { createRequire } = await import('module');
+const require = createRequire(import.meta.url);
+const sax = require('sax');
 
 /**
  * Parses XML bytes into XmlEvent stream
@@ -21,7 +25,7 @@ export async function* parseXmlEvents(
   let finished = false;
   let resolveNext: (() => void) | null = null;
 
-  parser.onopentag = (node: sax.Tag | sax.QualifiedTag) => {
+  parser.onopentag = (node: SaxTypes.Tag | SaxTypes.QualifiedTag) => {
     const attributes: Record<string, string> = {};
     if (node.attributes) {
       for (const key in node.attributes) {
