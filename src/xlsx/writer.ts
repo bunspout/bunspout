@@ -5,6 +5,7 @@ import { writeSheetXml } from '@xml/writer';
 import { SharedStringsTable } from './shared-strings';
 import { generateContentTypes, generateRels, generateWorkbook, generateWorkbookRels, generateCoreProperties, generateCustomProperties } from './structure';
 import type { WorkbookDefinition, WriterOptions } from './types';
+import { sheetNameSchema, workbookPropertiesSchema } from './validation';
 import { writeFile } from '../adapters';
 import { stringToBytes } from '../adapters/common';
 import type { Row } from '../types';
@@ -29,12 +30,23 @@ function buildSharedStringsTable(allRows: Row[]): SharedStringsTable {
 
 /**
  * Writes an XLSX file from a workbook definition
+ * @throws {z.ZodError} If validation fails (sheet names, properties, etc.)
  */
 export async function writeXlsx(
   filePath: string,
   definition: WorkbookDefinition,
   options?: WriterOptions,
 ): Promise<void> {
+  // Validate sheet names
+  for (const sheet of definition.sheets) {
+    sheetNameSchema.parse(sheet.name);
+  }
+
+  // Validate workbook properties if provided
+  if (definition.properties) {
+    workbookPropertiesSchema.parse(definition.properties);
+  }
+
   const opts = {
     sharedStrings: 'inline' as const,
     ...options,

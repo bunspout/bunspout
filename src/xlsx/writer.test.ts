@@ -689,4 +689,112 @@ describe('XLSXWriter', () => {
 
     });
   });
+
+  describe('Validation', () => {
+    test('should reject invalid sheet names', async () => {
+      // Empty name
+      expect(writeXlsx(testFile, {
+        sheets: [{
+          name: '', rows: (async function* () {
+          })(),
+        }],
+      })).rejects.toThrow();
+
+      // Name too long
+      expect(writeXlsx(testFile, {
+        sheets: [{
+          name: 'A'.repeat(32), rows: (async function* () {
+          })(),
+        }],
+      })).rejects.toThrow();
+
+      // Invalid characters
+      expect(writeXlsx(testFile, {
+        sheets: [{
+          name: 'Sheet:1', rows: (async function* () {
+          })(),
+        }],
+      })).rejects.toThrow();
+
+      // Apostrophe at start
+      expect(writeXlsx(testFile, {
+        sheets: [{
+          name: "'Sheet", rows: (async function* () {
+          })(),
+        }],
+      })).rejects.toThrow();
+    });
+
+    test('should reject invalid workbook properties', async () => {
+      // Title too long
+      expect(writeXlsx(testFile, {
+        sheets: [{
+          name: 'Sheet1', rows: (async function* () {
+          })(),
+        }],
+        properties: {
+          title: 'A'.repeat(256),
+        },
+      })).rejects.toThrow();
+
+      // Invalid language code
+      expect(writeXlsx(testFile, {
+        sheets: [{
+          name: 'Sheet1', rows: (async function* () {
+          })(),
+        }],
+        properties: {
+          language: 'invalid',
+        },
+      })).rejects.toThrow();
+
+      // Invalid custom property name
+      expect(writeXlsx(testFile, {
+        sheets: [{
+          name: 'Sheet1', rows: (async function* () {
+          })(),
+        }],
+        properties: {
+          customProperties: {
+            'Property<Name': 'Value',
+          },
+        },
+      })).rejects.toThrow();
+
+      // Custom property value too long
+      expect(writeXlsx(testFile, {
+        sheets: [{
+          name: 'Sheet1', rows: (async function* () {
+          })(),
+        }],
+        properties: {
+          customProperties: {
+            'Property': 'A'.repeat(32768),
+          },
+        },
+      })).rejects.toThrow();
+    });
+
+    test('should accept valid sheet names and properties', async () => {
+      await writeXlsx(testFile, {
+        sheets: [
+          { name: 'Sheet1', rows: (async function* () {})() },
+          { name: 'My Sheet', rows: (async function* () {})() },
+          { name: "Sheet'Name", rows: (async function* () {})() }, // Apostrophe in middle is OK
+        ],
+        properties: {
+          title: 'My Workbook',
+          creator: 'Author',
+          language: 'en-US',
+          customProperties: {
+            'Custom1': 'Value1',
+            'Custom2': 'Value2',
+          },
+        },
+      });
+
+      // Verify file was created
+      expect(await Bun.file(testFile).exists()).toBe(true);
+    });
+  });
 });
