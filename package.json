@@ -36,9 +36,14 @@
     "lint": "bun run typecheck && eslint .",
     "lint:fix": "eslint . --fix",
     "test": "bun test",
-    "test:node": "node --import tsx/esm --test src/tests/integration/read-write.node.test.ts",
-    "typecheck": "tsc --noEmit"
     "test:node": "node --import tsx/esm --test 'src/**/*.test.ts'",
+    "typecheck": "tsc --noEmit",
+    "docker:build": "docker compose build",
+    "docker:test:bun": "docker compose run --rm bun bun test",
+    "docker:test:node": "docker compose run --rm node sh -c 'find src -name \"*.test.ts\" | xargs node --import tsx/esm --test'",
+    "docker:test:all": "npm run docker:test:bun && npm run docker:test:node",
+    "docker:shell:bun": "docker compose run --rm bun sh",
+    "docker:shell:node": "docker compose run --rm node sh"
   },
   "dependencies": {
     "buffer-crc32": "^1.0.0",

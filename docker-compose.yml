@@ -1,0 +1,47 @@
+services:
+  # Bun test runner
+  bun:
+    build:
+      context: .
+      dockerfile: Dockerfile.bun
+    container_name: bunspout-bun
+    volumes:
+      # Mount source code for live updates
+      - ./src:/app/src:ro
+      - ./package.json:/app/package.json:ro
+      - ./tsconfig.json:/app/tsconfig.json:ro
+      # Exclude node_modules (use container's version)
+      - /app/node_modules
+    environment:
+      - NODE_ENV=test
+    # Keep container running for interactive testing
+    # Uncomment to run tests and exit:
+    # command: bun test
+
+  # Node.js 20 test runner
+  node:
+    build:
+      context: .
+      dockerfile: Dockerfile.node
+    container_name: bunspout-node
+    volumes:
+      # Mount source code for live updates
+      - ./src:/app/src:ro
+      - ./package.json:/app/package.json:ro
+      - ./tsconfig.json:/app/tsconfig.json:ro
+      # Exclude node_modules (use container's version)
+      - /app/node_modules
+    environment:
+      - NODE_ENV=test
+    # Keep container running for interactive testing
+    # Uncomment to run tests and exit:
+    # command: npm run test:node
+
+  # Optional: Run both tests in parallel
+  test-all:
+    image: alpine:3.18
+    container_name: bunspout-test-orchestrator
+    depends_on:
+      - bun
+      - node
+    command: echo "Run 'docker-compose run bun' and 'docker-compose run node' to test"

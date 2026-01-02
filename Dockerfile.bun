@@ -1,0 +1,16 @@
+# Bun test container
+FROM oven/bun:1.3.5-slim
+
+WORKDIR /app
+
+# Copy package files
+COPY package.json bun.lock* ./
+
+# Install dependencies
+RUN bun install #--frozen-lockfile
+
+# Copy source code (using volume mount in docker-compose for hot-reload)
+COPY . .
+
+# Default command runs all tests
+CMD ["bun", "test"]
