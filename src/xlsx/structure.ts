@@ -13,6 +13,7 @@ export function generateContentTypes(
   hasSharedStrings: boolean = false,
   hasCoreProperties: boolean = false,
   hasCustomProperties: boolean = false,
+  hasStyles: boolean = false,
 ): string {
   const sheetOverrides = sheets
     .map((sheet) => `  <Override PartName="/xl/worksheets/sheet${sheet.id}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`)
@@ -22,6 +23,10 @@ export function generateContentTypes(
 
   if (hasSharedStrings) {
     overrides.push('  <Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/>');
+  }
+
+  if (hasStyles) {
+    overrides.push('  <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>');
   }
 
   if (hasCoreProperties) {
@@ -72,15 +77,19 @@ ${relationships.join('\n')}
 
 /**
  * Generates xl/workbook.xml
+ * @param sheets - Array of sheet definitions
+ * @param idOffset - Offset for relationship IDs (sheets come after shared strings and styles)
  */
 export function generateWorkbook(
   sheets: { name: string; id: number; hidden?: boolean }[],
+  idOffset: number = 0,
 ): string {
   const sheetElements = sheets
     .map(
       (sheet, index) => {
         const stateAttr = sheet.hidden ? ' state="hidden"' : '';
-        return `    <sheet name="${escapeXml(sheet.name)}" sheetId="${sheet.id}" r:id="rId${index + 1}"${stateAttr}/>`;
+        // Sheet relationship IDs start after shared strings and styles
+        return `    <sheet name="${escapeXml(sheet.name)}" sheetId="${sheet.id}" r:id="rId${index + 1 + idOffset}"${stateAttr}/>`;
       },
     )
     .join('\n');
@@ -99,7 +108,7 @@ ${sheetElements}
 export function generateWorkbookRels(
   sheets: { id: number }[],
   hasSharedStrings: boolean = false,
-  hasCoreProperties: boolean = false,
+  hasStyles: boolean = false,
 ): string {
   const relationships: string[] = [];
 
@@ -109,6 +118,14 @@ export function generateWorkbookRels(
   if (hasSharedStrings) {
     relationships.push(
       '  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/>',
+    );
+    idOffset++;
+  }
+
+  // Add styles relationship if present
+  if (hasStyles) {
+    relationships.push(
+      `  <Relationship Id="rId${idOffset + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>`,
     );
     idOffset++;
   }

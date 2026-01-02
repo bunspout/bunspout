@@ -13,7 +13,7 @@ describe('Row Writer Integration', () => {
     }
     const result = chunks.join('');
     expect(result).toContain('<row r="1" spans="1:1">');
-    expect(result).toContain('<c r="A1" s="0" t="inlineStr"><is><t>Hello</t></is></c>');
+    expect(result).toContain('<c r="A1" t="inlineStr"><is><t>Hello</t></is></c>');
     expect(result).toContain('</row>');
   });
 
@@ -52,9 +52,9 @@ describe('Row Writer Integration', () => {
       chunks.push(chunk);
     }
     const result = chunks.join('');
-    expect(result).toContain('<c r="A1" s="0" t="inlineStr"><is><t>Name</t></is></c>');
-    expect(result).toContain('<c r="B1" s="0"><v>42</v></c>');
-    expect(result).toContain('<c r="C1" s="0" t="inlineStr"><is><t>Text</t></is></c>');
+    expect(result).toContain('<c r="A1" t="inlineStr"><is><t>Name</t></is></c>');
+    expect(result).toContain('<c r="B1"><v>42</v></c>');
+    expect(result).toContain('<c r="C1" t="inlineStr"><is><t>Text</t></is></c>');
   });
 
   test('should verify XML output format matches Excel spec', async () => {

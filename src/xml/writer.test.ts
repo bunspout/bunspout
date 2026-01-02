@@ -8,19 +8,19 @@ describe('XML Writer', () => {
     test('should serialize string cell', () => {
       const cell: Cell = { value: 'Hello', type: 'string' };
       const result = serializeCell(cell, 1, 0);
-      expect(result).toBe('<c r="A1" s="0" t="inlineStr"><is><t>Hello</t></is></c>');
+      expect(result).toBe('<c r="A1" t="inlineStr"><is><t>Hello</t></is></c>');
     });
 
     test('should serialize number cell', () => {
       const cell: Cell = { value: 42, type: 'number' };
       const result = serializeCell(cell, 1, 0);
-      expect(result).toBe('<c r="A1" s="0"><v>42</v></c>');
+      expect(result).toBe('<c r="A1"><v>42</v></c>');
     });
 
     test('should serialize cell without explicit type (defaults to number)', () => {
       const cell: Cell = { value: 100 };
       const result = serializeCell(cell, 1, 0);
-      expect(result).toBe('<c r="A1" s="0"><v>100</v></c>');
+      expect(result).toBe('<c r="A1"><v>100</v></c>');
     });
 
     test('should escape XML special characters in string values', () => {
@@ -32,19 +32,19 @@ describe('XML Writer', () => {
     test('should serialize date cell', () => {
       const cell: Cell = { value: 45323, type: 'date' };
       const result = serializeCell(cell, 1, 0);
-      expect(result).toBe('<c r="A1" s="0" t="d"><v>45323</v></c>');
+      expect(result).toBe('<c r="A1" t="d"><v>45323</v></c>');
     });
 
     test('should serialize boolean cell (true)', () => {
       const cell: Cell = { value: 1, type: 'boolean' };
       const result = serializeCell(cell, 1, 0);
-      expect(result).toBe('<c r="A1" s="0" t="b"><v>1</v></c>');
+      expect(result).toBe('<c r="A1" t="b"><v>1</v></c>');
     });
 
     test('should serialize boolean cell (false)', () => {
       const cell: Cell = { value: 0, type: 'boolean' };
       const result = serializeCell(cell, 1, 0);
-      expect(result).toBe('<c r="A1" s="0" t="b"><v>0</v></c>');
+      expect(result).toBe('<c r="A1" t="b"><v>0</v></c>');
     });
 
     test('should preserve newlines in string values', () => {
@@ -52,14 +52,14 @@ describe('XML Writer', () => {
       const result = serializeCell(cell, 1, 0);
       // Newlines should be preserved (not escaped)
       expect(result).toContain('Line1\nLine2\r\nLine3');
-      expect(result).toBe('<c r="A1" s="0" t="inlineStr"><is><t>Line1\nLine2\r\nLine3</t></is></c>');
+      expect(result).toBe('<c r="A1" t="inlineStr"><is><t>Line1\nLine2\r\nLine3</t></is></c>');
     });
 
     test('should preserve tabs in string values', () => {
       const cell: Cell = { value: 'Col1\tCol2', type: 'string' };
       const result = serializeCell(cell, 1, 0);
       expect(result).toContain('Col1\tCol2');
-      expect(result).toBe('<c r="A1" s="0" t="inlineStr"><is><t>Col1\tCol2</t></is></c>');
+      expect(result).toBe('<c r="A1" t="inlineStr"><is><t>Col1\tCol2</t></is></c>');
     });
 
     test('should handle control characters by removing invalid ones', () => {
@@ -87,6 +87,38 @@ describe('XML Writer', () => {
       expect(serializeCell(cell, 26, 0)).toContain('r="A26"');
       expect(serializeCell(cell, 27, 0)).toContain('r="A27"');
     });
+
+    test('should include style index when style is provided', () => {
+      const cell: Cell = {
+        value: 'Styled',
+        type: 'string',
+        style: { font: { bold: true } },
+      };
+      const getStyleIndex = () => 1; // Mock style index
+      const result = serializeCell(cell, 1, 0, undefined, getStyleIndex);
+      expect(result).toContain('s="1"');
+      expect(result).toContain('r="A1"');
+    });
+
+    test('should not include style attribute when no style is provided', () => {
+      const cell: Cell = { value: 'Plain', type: 'string' };
+      const result = serializeCell(cell, 1, 0);
+      expect(result).not.toContain('s="');
+      expect(result).toContain('r="A1"');
+    });
+
+    test('should throw with cell context when getStyleIndex throws', () => {
+      const cell: Cell = {
+        value: 'Test',
+        type: 'string',
+        style: { font: { bold: true } },
+      };
+      const throwingGetStyleIndex = () => {
+        throw new Error('Style validation failed');
+      };
+      expect(() => serializeCell(cell, 5, 2, undefined, throwingGetStyleIndex)).toThrow('Failed to get style index for cell C5');
+      expect(() => serializeCell(cell, 5, 2, undefined, throwingGetStyleIndex)).toThrow('Style validation failed');
+    });
   });
 
   describe('serializeRow', () => {
@@ -95,7 +127,7 @@ describe('XML Writer', () => {
       const result = serializeRow(row);
       expect(result).toContain('<row r="1" spans="1:1">');
       expect(result).toContain('</row>');
-      expect(result).toContain('<c r="A1" s="0" t="inlineStr"><is><t>Hello</t></is></c>');
+      expect(result).toContain('<c r="A1" t="inlineStr"><is><t>Hello</t></is></c>');
     });
 
     test('should serialize row with multiple cells', () => {
@@ -109,9 +141,9 @@ describe('XML Writer', () => {
       };
       const result = serializeRow(row);
       expect(result).toContain('<row r="1" spans="1:3">');
-      expect(result).toContain('<c r="A1" s="0" t="inlineStr"><is><t>A</t></is></c>');
-      expect(result).toContain('<c r="B1" s="0"><v>1</v></c>');
-      expect(result).toContain('<c r="C1" s="0" t="inlineStr"><is><t>B</t></is></c>');
+      expect(result).toContain('<c r="A1" t="inlineStr"><is><t>A</t></is></c>');
+      expect(result).toContain('<c r="B1"><v>1</v></c>');
+      expect(result).toContain('<c r="C1" t="inlineStr"><is><t>B</t></is></c>');
     });
 
     test('should serialize row with rowIndex attribute', () => {
@@ -151,6 +183,7 @@ describe('XML Writer', () => {
 
   describe('writeSheetXml', () => {
     test('should write empty sheet', async () => {
+      // noinspection JSMismatchedCollectionQueryUpdate -- Never written to as part of this test
       const rows: Row[] = [];
       const chunks: string[] = [];
       for await (const chunk of writeSheetXml(async function* () {
@@ -177,7 +210,7 @@ describe('XML Writer', () => {
       }
       const result = chunks.join('');
       expect(result).toContain('<row r="1" spans="1:1">');
-      expect(result).toContain('<c r="A1" s="0" t="inlineStr"><is><t>Hello</t></is></c>');
+      expect(result).toContain('<c r="A1" t="inlineStr"><is><t>Hello</t></is></c>');
       expect(result).toContain('</row>');
     });
 
@@ -204,7 +237,7 @@ describe('XML Writer', () => {
         { cells: [{ value: 'A' }] },
         { cells: [{ value: 'B' }] },
       ];
-      for await (const chunk of writeSheetXml(async function* () {
+      for await (const _chunk of writeSheetXml(async function* () {
         for (const row of rows) {
           rowCount++;
           yield row;

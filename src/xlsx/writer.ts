@@ -4,10 +4,12 @@ import { resolveCell } from '@xml/cell-resolver';
 import { writeSheetXml } from '@xml/writer';
 import { SharedStringsTable } from './shared-strings';
 import { generateContentTypes, generateRels, generateWorkbook, generateWorkbookRels, generateCoreProperties, generateCustomProperties } from './structure';
+import { StyleRegistry } from './styles';
 import type { WorkbookDefinition, WriterOptions } from './types';
+import { sheetNameSchema, workbookPropertiesSchema } from './validation';
 import { writeFile } from '../adapters';
-import { stringToBytes } from '../adapters/common';
-import type { Row } from '../types';
+import { stringToBytes } from '../adapters';
+import type { Row, Style } from '../types';
 
 /**
  * Builds shared strings table from all rows
@@ -29,12 +31,23 @@ function buildSharedStringsTable(allRows: Row[]): SharedStringsTable {
 
 /**
  * Writes an XLSX file from a workbook definition
+ * @throws {z.ZodError} If validation fails (sheet names, properties, etc.)
  */
 export async function writeXlsx(
   filePath: string,
   definition: WorkbookDefinition,
   options?: WriterOptions,
 ): Promise<void> {
+  // Validate sheet names
+  for (const sheet of definition.sheets) {
+    sheetNameSchema.parse(sheet.name);
+  }
+
+  // Validate workbook properties if provided
+  if (definition.properties) {
+    workbookPropertiesSchema.parse(definition.properties);
+  }
+
   const opts = {
     sharedStrings: 'inline' as const,
     ...options,
@@ -50,10 +63,16 @@ export async function writeXlsx(
   }));
 
   let sharedStringsTable: SharedStringsTable | null = null;
+  let styleRegistry: StyleRegistry | null = null;
   const allSheetRows: Row[][] = [];
 
-  // If using shared strings, collect all rows first to build the table
+  // Collect rows only if shared strings are enabled (styles are registered incrementally)
+  // Note: We build shared strings before styles are registered. This is safe because:
+  // - String values are currently independent of styles (no number formats, locale formatting)
+  // - If we later add format-dependent stringification (number formats, locale), shared strings
+  //   may need to be built after style registration or become format-aware.
   if (opts.sharedStrings === 'shared') {
+    // Collect all rows for shared strings table
     for (let i = 0; i < definition.sheets.length; i++) {
       const sheetDef = definition.sheets[i]!;
       const rows = await collect<Row>(sheetDef.rows);
@@ -61,6 +80,9 @@ export async function writeXlsx(
     }
     sharedStringsTable = buildSharedStringsTable(allSheetRows.flat());
   }
+
+  // Create style registry for incremental style registration during sheet writing
+  styleRegistry = new StyleRegistry();
 
   // Write each sheet
   for (let i = 0; i < definition.sheets.length; i++) {
@@ -81,28 +103,34 @@ export async function writeXlsx(
     };
 
     // Generate sheet XML
-    let sheetXml: AsyncIterable<string>;
-    if (opts.sharedStrings === 'shared' && sharedStringsTable) {
-      // Use collected rows with shared strings
-      const rows = allSheetRows[i]!;
-      const getStringIndex = (str: string) => sharedStringsTable!.getIndex(str);
-      sheetXml = writeSheetXml(
-        (async function* () {
-          for (const row of rows) yield row;
-        })(),
-        {
-          getStringIndex,
-          columnWidths: columnWidthOptions,
-          ...rowHeightOptions,
-        },
-      );
-    } else {
-      // Use original rows with inline strings
-      sheetXml = writeSheetXml(sheetDef.rows, {
-        columnWidths: columnWidthOptions,
-        ...rowHeightOptions,
-      });
-    }
+    // Styles are registered incrementally as cells are written (preserves streaming)
+    const getStringIndex = opts.sharedStrings === 'shared' && sharedStringsTable
+      ? (str: string) => sharedStringsTable!.getIndex(str)
+      : undefined;
+    // getStyleIndex is always provided (StyleRegistry is always created)
+    // It's only called when a cell has a style, and returns the cellXfs index (>= 1)
+    const getStyleIndex = (style: Style) => {
+      // Register style incrementally and return its cellXfs index
+      // StyleRegistry handles the offset internally (index 0 is reserved for default style)
+      return styleRegistry!.addStyle(style);
+    };
+
+    // Use collected rows if shared strings enabled, otherwise stream original rows
+    const rowsToWrite = opts.sharedStrings === 'shared' && allSheetRows[i]
+      ? (async function* () {
+        for (const row of allSheetRows[i]!) yield row;
+      })()
+      : sheetDef.rows;
+
+    const sheetXml = writeSheetXml(rowsToWrite, {
+      getStringIndex,
+      getStyleIndex,
+      columnWidths: columnWidthOptions,
+      ...rowHeightOptions,
+    });
+    // Note: We stream row computation (process rows one at a time), but buffer the XML output
+    // before writing to ZIP. This is acceptable for now, but means full sheet XML is in memory.
+    // Future optimization: stream XML chunks directly to ZIP without full buffering.
     const xmlStrings = await collect<string>(sheetXml);
 
     // Write sheet XML to ZIP
@@ -119,6 +147,15 @@ export async function writeXlsx(
       zipWriter,
       'xl/sharedStrings.xml',
       stringToBytes(sharedStringsTable.generateXml()),
+    );
+  }
+
+  // Write styles.xml if any styles were registered (generated from registry, not all rows)
+  if (styleRegistry.getCount() > 0) {
+    await writeZipEntry(
+      zipWriter,
+      'xl/styles.xml',
+      stringToBytes(styleRegistry.generateXml()),
     );
   }
 
@@ -148,10 +185,17 @@ export async function writeXlsx(
   }
 
   // Write structure files
+  const hasStyles = styleRegistry.getCount() > 0;
+  const hasSharedStrings = opts.sharedStrings === 'shared';
+
+  // Calculate relationship ID offset for sheets (sheets come after shared strings and styles)
+  let idOffset = 0;
+  if (hasSharedStrings) idOffset++;
+  if (hasStyles) idOffset++;
   await writeZipEntry(
     zipWriter,
     '[Content_Types].xml',
-    stringToBytes(generateContentTypes(sheetInfos, opts.sharedStrings === 'shared', hasProperties, hasCustomProps)),
+    stringToBytes(generateContentTypes(sheetInfos, hasSharedStrings, hasProperties, hasCustomProps, hasStyles)),
   );
 
   await writeZipEntry(
@@ -163,13 +207,13 @@ export async function writeXlsx(
   await writeZipEntry(
     zipWriter,
     'xl/workbook.xml',
-    stringToBytes(generateWorkbook(sheetInfos)),
+    stringToBytes(generateWorkbook(sheetInfos, idOffset)),
   );
 
   await writeZipEntry(
     zipWriter,
     'xl/_rels/workbook.xml.rels',
-    stringToBytes(generateWorkbookRels(sheetInfos, opts.sharedStrings === 'shared', hasProperties)),
+    stringToBytes(generateWorkbookRels(sheetInfos, hasSharedStrings, hasStyles)),
   );
 
   // Write ZIP to file

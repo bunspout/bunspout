@@ -108,6 +108,17 @@ describe('XLSX Structure Generators', () => {
       expect(result).toContain('MySheet');
       expect(result).toMatch(/<sheet name="MySheet" sheetId="1" r:id="rId1"/);
     });
+
+    test('should apply idOffset to relationship IDs', () => {
+      // When styles are present, sheets should start at rId2
+      const result = generateWorkbook([{ name: 'Sheet1', id: 1 }], 1);
+      expect(result).toMatch(/<sheet name="Sheet1" sheetId="1" r:id="rId2"/);
+
+      // When both shared strings and styles are present, sheets should start at rId3
+      const result2 = generateWorkbook([{ name: 'Sheet1', id: 1 }, { name: 'Sheet2', id: 2 }], 2);
+      expect(result2).toMatch(/<sheet name="Sheet1" sheetId="1" r:id="rId3"/);
+      expect(result2).toMatch(/<sheet name="Sheet2" sheetId="2" r:id="rId4"/);
+    });
   });
 
   describe('generateWorkbookRels', () => {
@@ -124,12 +135,13 @@ describe('XLSX Structure Generators', () => {
       expect(result).toMatch(/<Relationship Id="rId2" Type="http:\/\/schemas\.openxmlformats\.org\/officeDocument\/2006\/relationships\/worksheet" Target="worksheets\/sheet1\.xml"/);
     });
 
-    test('should handle shared strings and core properties together', () => {
+    test('should handle shared strings and styles together', () => {
       const result = generateWorkbookRels([{ id: 1 }], true, true);
       expect(result).toContain('sharedStrings.xml');
+      expect(result).toContain('styles.xml');
       expect(result).toMatch(/rId1.*sharedStrings/);
-      expect(result).toMatch(/rId2.*sheet1/);
-      // Note: core properties relationship goes in _rels/.rels, not workbook.xml.rels
+      expect(result).toMatch(/rId2.*styles/);
+      expect(result).toMatch(/rId3.*sheet1/);
     });
 
     test('should generate workbook.xml.rels for multiple sheets', () => {

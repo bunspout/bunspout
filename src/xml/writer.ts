@@ -1,8 +1,10 @@
+// noinspection HtmlUnknownAttribute,HtmlDeprecatedAttribute
+// noinspection HtmlUnknownAttribute
 import type { ColumnWidthDefinition, SheetColumnWidthOptions, RowHeightDefinition } from '@xlsx/types';
 import { getCellReference } from '@utils/cell-reference';
 import { ColumnWidthTracker } from '@utils/column-widths';
 import { escapeXml } from '@utils/xml';
-import type { Row, Cell } from '../types';
+import type { Row, Cell, Style } from '../types';
 import { resolveCell } from './cell-resolver';
 
 /**
@@ -14,6 +16,11 @@ export interface WriteSheetXmlOptions {
    * If provided, strings will be stored in shared strings table.
    */
   getStringIndex?: (str: string) => number;
+  /**
+   * Function to get style index for a given style.
+   * If provided, styles will be applied to cells.
+   */
+  getStyleIndex?: (style: Style) => number;
   /**
    * Column width options for the sheet
    */
@@ -38,6 +45,11 @@ export interface SerializeRowOptions {
    */
   getStringIndex?: (str: string) => number;
   /**
+   * Function to get style index for a given style.
+   * If provided, styles will be applied to cells.
+   */
+  getStyleIndex?: (style: Style) => number;
+  /**
    * Column width tracker for auto-detecting column widths.
    * If provided, cell widths will be tracked during serialization.
    */
@@ -61,6 +73,7 @@ export interface SerializeRowOptions {
  * @param rowIndex - Row index (1-based: 1 = first row)
  * @param colIndex - Column index (0-based: 0 = A, 1 = B, etc.)
  * @param getStringIndex - Optional function to get shared string index
+ * @param getStyleIndex - Optional function to get style index
  * @returns XML string for the cell
  */
 export function serializeCell(
@@ -68,10 +81,26 @@ export function serializeCell(
   rowIndex: number,
   colIndex: number,
   getStringIndex?: (str: string) => number,
+  getStyleIndex?: (style: Style) => number,
 ): string {
   const resolved = resolveCell(cell);
   const cellRef = getCellReference(rowIndex, colIndex);
-  const styleAttr = ' s="0"'; // Default style index
+
+  // Determine style index
+  // getStyleIndex returns the final cellXfs index (already offset, 0 is reserved for default)
+  // Only emit s attribute when a style is present (Excel defaults to style 0 automatically)
+  let styleAttr = '';
+  if (cell.style && getStyleIndex) {
+    try {
+      const cellXfsIndex = getStyleIndex(cell.style);
+      styleAttr = ` s="${cellXfsIndex}"`;
+    } catch (error) {
+      // Provide context about which cell failed (cellRef already computed above)
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to get style index for cell ${cellRef}: ${errorMessage}`);
+    }
+  }
+
   const refAttr = ` r="${cellRef}"`;
 
   if (resolved.t === 's' && getStringIndex) {
@@ -133,7 +162,7 @@ export function serializeRow(
   row: Row,
   options?: SerializeRowOptions,
 ): string {
-  const { getStringIndex, widthTracker, rowHeight, rowIndex: inferredRowIndex } = options ?? {};
+  const { getStringIndex, getStyleIndex, widthTracker, rowHeight, rowIndex: inferredRowIndex } = options ?? {};
   const rowIndex = inferredRowIndex ?? row.rowIndex ?? 1;
   const rowIndexAttr = ` r="${rowIndex}"`;
 
@@ -165,10 +194,10 @@ export function serializeRow(
         return '';
       }
       // Track column width if auto-detection is enabled
-      if (widthTracker && cell !== undefined && cell !== null) {
+      if (widthTracker) {
         widthTracker.updateColumnWidth(colIndex, cell);
       }
-      return serializeCell(cell, rowIndex, colIndex, getStringIndex);
+      return serializeCell(cell, rowIndex, colIndex, getStringIndex, getStyleIndex);
     })
     .join('');
 
@@ -306,6 +335,7 @@ export async function* writeSheetXml(
   yield '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">';
 
   const getStringIndex = options?.getStringIndex;
+  const getStyleIndex = options?.getStyleIndex;
   const columnWidthOptions = options?.columnWidths;
   const defaultRowHeight = options?.defaultRowHeight;
   const rowHeights = options?.rowHeights;
@@ -338,6 +368,7 @@ export async function* writeSheetXml(
       const resolvedHeight = resolveRowHeight(rowIndex, row.height, rowHeights);
       yield serializeRow(row, {
         getStringIndex,
+        getStyleIndex,
         widthTracker,
         rowHeight: resolvedHeight,
         rowIndex,
@@ -407,6 +438,7 @@ export async function* writeSheetXml(
     const resolvedHeight = resolveRowHeight(rowIndex, row.height, rowHeights);
     yield serializeRow(row, {
       getStringIndex,
+      getStyleIndex,
       widthTracker,
       rowHeight: resolvedHeight,
       rowIndex,
