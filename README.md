@@ -4,12 +4,12 @@ A fast, streaming Excel read/write library for XLSX files. Built with Bun runtim
 
 ## Features
 
-- 🚀 **Streaming architecture** - Process large Excel files without loading everything into memory
-- 📊 **Full XLSX support** - Read and write Excel workbooks with multiple sheets
-- 🔧 **TypeScript-first** - Comprehensive type safety with strict mode
-- ⚡ **Bun-optimized** - Built for Bun runtime with adapters for other environments
-- 📈 **Performance-focused** - Benchmarks included for measuring performance
-- 🧩 **Modular design** - Clean separation between XLSX, XML, ZIP, and sheet layers
+- ":rocket:" **Streaming architecture** - Process large Excel files without loading everything into memory
+- ":bar_chart:" **Full XLSX support** - Read and write Excel workbooks with multiple sheets
+- ":wrench:" **TypeScript-first** - Comprehensive type safety with strict mode
+- ":zap:" **Bun-optimized** - Built for Bun runtime with adapters for other environments
+- ":chart_with_upwards_trend:" **Performance-focused** - Benchmarks included for measuring performance
+- ":jigsaw:**Modular design** - Clean separation between XLSX, XML, ZIP, and sheet layers
 
 Traditional XLSX writers often load the entire dataset into memory before writing. Bunspout uses AsyncIterable streams to process rows one by one, which allows:
 	•	Low memory footprint
@@ -193,34 +193,33 @@ cell(null);            // Empty cell
 Bunspout focuses on fast, streaming Excel operations. The package is currently in the alpha stage.
 Here are current limitations:
 
-### 🚫 **Limited Formula Evaluation**
+### ":no_entry_sign:" **Limited Formula Evaluation**
 - When reading, formula's computed values are read, if available
 - No calculation engine - formulas won't execute in the generated Excel files
 - Formulas are stored as text (strings starting with `=`)
 - Use case: Data export with formula templates that users can edit
 
-### 🎨 **Limited Styling Support**
-- No cell formatting (colors, fonts, borders)
-- No conditional formatting
+### ":art:**Limited Styling Support**
+- Conditional formatting not supported
 - Basic text formatting only (dates, numbers, booleans)
 - Use case: Clean data export without visual styling
 
-### 📊 **No Charts or Graphics**
+### ":bar_chart:**No Charts or Graphics**
 - Pure data tables only
 - No embedded images, charts, or shapes
 - Use case: Data export for further processing in Excel/other tools
 
-### 🔢 **Data Type Constraints**
+### ":1234:**Data Type Constraints**
 - Large numbers may lose precision in Excel (Excel's limit: 15 significant digits) - bunspout passes numbers through without validation; Excel handles precision according to its own rules
 - Very long text may be truncated in some Excel versions - bunspout does not limit text length; any truncation is Excel's behavior
 - Date handling follows Excel's date serial number system
 
-### 📈 **Performance Considerations**
+### ":chart_with_upwards_trend:**Performance Considerations**
 - Shared strings mode is slower but produces smaller file sizes
 - Column width auto-detection requires buffering (slightly slower)
 - Memory usage scales with concurrent operations
 
-### 🔄 **Excel Compatibility**
+### ":recycle:**Excel Compatibility**
 - Generated files are valid XLSX but may not include all Excel features
 - Some advanced Excel features (macros, data validation, etc.) not supported
 - Focus on core spreadsheet functionality for maximum compatibility
