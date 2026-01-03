@@ -41,7 +41,7 @@ await writeXlsx('output.xlsx', {
     {
       name: 'Data',
       rows: (async function* () {
-        yield row([cell('Name'), cell('Age'), cell('City')]);
+        yield row([cell('Name', style: { font: { bold: true } }), cell('Age'), cell('City')]);
         yield row([cell('Alice'), cell(30), cell('New York')]);
         yield row([cell('Bob'), cell(25), cell('San Francisco')]);
       })(),
@@ -205,11 +205,12 @@ Here are current limitations:
 - Formulas are stored as text (strings starting with `=`)
 - Use case: Data export with formula templates that users can edit
 
-### 🎨 **Limited Styling Support**
-- No cell formatting (colors, fonts, borders)
-- No conditional formatting
-- Basic text formatting only (dates, numbers, booleans)
-- Use case: Clean data export without visual styling
+### 🎨 **Font Styling Support**
+- ✅ **Font styles**: Bold, italic, underline, strikethrough
+- ✅ **Font properties**: Size, color (ARGB format), font name
+- ✅ **Style deduplication**: Identical styles are automatically deduplicated
+- ❌ **Not implemented**: Background colors, cell alignment, borders, number formats, conditional formatting
+- Use case: Data export with basic font styling for readability
 
 ### 📊 **No Charts or Graphics**
 - Pure data tables only
