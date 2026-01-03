@@ -83,8 +83,18 @@ export { describe, test, expect, beforeEach, afterEach, beforeAll, afterAll };
 // Convenience re-exports
 export const it = test;
 export const fit = isBun && bunTest
-  ? bunTest.test.only
-  : test;
+  ? ((name: string, fn: () => void | Promise<void>) => {
+    // In CI environments, Bun disables .only, so fall back to regular test
+    try {
+      return bunTest.test.only(name, fn);
+    } catch {
+      // Fall back to regular test if .only is disabled (e.g., in CI)
+      return bunTest.test(name, fn);
+    }
+  })
+  : isNode && nodeTest && nodeTest.test.only
+    ? nodeTest.test.only
+    : test; // Fallback if .only is not available
 export const xit = isBun && bunTest
   ? bunTest.test.skip
   : ((name: string, fn: () => void | Promise<void> = () => {}) => {
