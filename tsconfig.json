@@ -12,7 +12,12 @@
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
-    "noEmit": true,
+    "noEmit": false,
+    "emitDeclarationOnly": true,
+    "declaration": true,
+    "outDir": "./dist",
+    "declarationDir": "./dist/types",
+    "rootDir": ".",
 
     // Path aliases
     "baseUrl": "src",
@@ -36,5 +41,7 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noPropertyAccessFromIndexSignature": false
-  }
+  },
+  "include": ["index.ts", "src/**/*.ts"],
+  "exclude": ["**/*.test.ts", "**/*.bench.ts", "src/scripts/**", "src/tests/**"]
 }

@@ -30,6 +30,13 @@ npm install bunspout
 
 ## Usage
 
+### Modern Runtime Support (Node 24+ and Bun)
+
+Bunspout is built for modern JavaScript runtimes. It takes advantage of native ESM and modern features like `await using`.
+
+- **Bun**: Works out of the box with native TypeScript support.
+- **Node 24+**: Supports stripping types automatically. Use it without any extra configuration.
+
 ### Writing Excel Files
 
 ```typescript
