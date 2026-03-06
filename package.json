@@ -11,7 +11,7 @@
       "default": "./dist/index.js"
     }
   },
-  "version": "0.0.1-alpha.1",
+  "version": "0.0.1",
   "keywords": [
     "excel",
     "xlsx",
